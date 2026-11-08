@@ -20,6 +20,10 @@ SITE_POLICY = (
     "base-uri 'self'; form-action 'none'; frame-ancestors 'none'"
 )
 POLICY = os.environ.get('BEVEL_CSP', SITE_POLICY)
+STALLED_CONTEXT = """
+Object.defineProperty(AudioContext.prototype, 'state', { get: () => 'suspended' });
+AudioContext.prototype.resume = () => new Promise(() => {});
+"""
 AUDIO_STATE = """(() => {
   const audio = document.getElementById('audio');
   return { paused: audio.paused, time: audio.currentTime, ready: audio.readyState, network: audio.networkState, duration: audio.duration, error: audio.error?.message ?? null };
@@ -101,6 +105,21 @@ def check(driver, name, song):
     return ok
 
 
+def check_stalled_output(driver, song):
+    browser = driver.chromium.launch(headless=True, channel=os.environ.get('BROWSER_CHANNEL'))
+    page = browser.new_context(viewport={'width': 1280, 'height': 900}).new_page()
+    page.add_init_script(STALLED_CONTEXT)
+    page.goto(BASE + 'index.html')
+    wait_until(page, 'window.retroDJ !== undefined')
+    page.set_input_files('#file-input', str(song))
+    wait_until(page, "document.querySelectorAll('#tracks .row').length === 1")
+    page.click('#play')
+    wait_until(page, "document.getElementById('status').textContent.includes('No sound output')", seconds=10)
+    browser.close()
+    print(json.dumps({'check': 'stalled audio output reports a message', 'ok': True}), flush=True)
+    return True
+
+
 def main():
     server = ThreadingHTTPServer(('127.0.0.1', PORT), partial(Handler, directory=str(DOCS)))
     threading.Thread(target=server.serve_forever, daemon=True).start()
@@ -113,6 +132,12 @@ def main():
                 results.append(check(driver, name, song))
             except Exception as error:
                 print(json.dumps({'browser': name, 'ok': False, 'error': str(error)[:600]}, indent=1), flush=True)
+                results.append(False)
+        if 'chromium' in (sys.argv[1:] or ['chromium']):
+            try:
+                results.append(check_stalled_output(driver, song))
+            except Exception as error:
+                print(json.dumps({'check': 'stalled audio output reports a message', 'ok': False, 'error': str(error)[:600]}), flush=True)
                 results.append(False)
     server.shutdown()
     sys.exit(0 if all(results) else 1)

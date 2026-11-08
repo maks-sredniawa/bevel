@@ -28,7 +28,7 @@ npm test
 python3 tests/browser/smoke_test.py
 ```
 
-The smoke test needs `playwright`. CI runs both on Linux, macOS and Windows, in Chromium, Firefox and WebKit.
+The smoke test needs `playwright`. CI runs both on Linux, macOS and Windows, in Chromium and Firefox, plus WebKit on Linux and macOS.
 
 ## Contributing
 

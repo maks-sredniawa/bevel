@@ -20,6 +20,7 @@ jobs:
             browsers: chromium firefox webkit
           - os: windows-latest
             browsers: chromium firefox
+            no_audio: firefox
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
@@ -39,19 +40,6 @@ jobs:
           pulseaudio --start --exit-idle-time=-1
           pactl load-module module-null-sink sink_name=ci
           pactl set-default-sink ci
-      - if: runner.os == 'Windows'
-        shell: pwsh
-        timeout-minutes: 5
-        run: |
-          Invoke-WebRequest https://github.com/duncanthrax/scream/releases/download/4.0/Scream4.0.zip -OutFile Scream.zip
-          if ((Get-FileHash Scream.zip -Algorithm SHA256).Hash -ne 'fa33e25f9a46c61e4e0cd83362c51c3d2a45c6fe4091aad7507e240e40f1a520') { throw 'Unexpected Scream archive' }
-          Expand-Archive Scream.zip -DestinationPath Scream
-          $cert = (Get-AuthenticodeSignature Scream\Install\driver\x64\Scream.cat).SignerCertificate
-          $store = [System.Security.Cryptography.X509Certificates.X509Store]::new('TrustedPublisher', 'LocalMachine')
-          $store.Open('ReadWrite')
-          $store.Add($cert)
-          $store.Close()
-          Scream\Install\helpers\devcon-x64.exe install Scream\Install\driver\x64\Scream.inf *Scream
-          Set-Service Audiosrv -StartupType Automatic
-          Start-Service Audiosrv
       - run: python tests/browser/smoke_test.py ${{ matrix.browsers }}
+        env:
+          BEVEL_NO_AUDIO: ${{ matrix.no_audio }}

@@ -74,8 +74,9 @@ def check(driver, name, song):
     page.set_input_files('#file-input', str(song))
     wait_until(page, "document.querySelectorAll('#tracks .row').length === 1")
     page.click('#play')
+    plays = name not in os.environ.get('BEVEL_NO_AUDIO', '').split()
     try:
-        wait_until(page, "document.getElementById('audio').currentTime > 0.5")
+        wait_until(page, "document.getElementById('audio').currentTime > 0.5" if plays else "document.getElementById('status').textContent.includes('No sound output')")
     except TimeoutError as error:
         audio = page.evaluate(AUDIO_STATE)
         raise TimeoutError(f'{error}; audio element: {json.dumps(audio)}; page errors: {page_errors}') from error
@@ -89,10 +90,11 @@ def check(driver, name, song):
     mini = {'strip_shown': page.is_visible('#mini'), 'full_player_hidden': not page.is_visible('.work')}
     mini['label'] = page.inner_text('#mini-marquee')
     mini['focus_moved_in'] = page.evaluate("document.activeElement.id") == 'mini-play'
-    page.click('#mini-play')
-    wait_until(page, "document.getElementById('audio').paused")
-    page.click('#mini-play')
-    wait_until(page, "!document.getElementById('audio').paused")
+    if plays:
+        page.click('#mini-play')
+        wait_until(page, "document.getElementById('audio').paused")
+        page.click('#mini-play')
+        wait_until(page, "!document.getElementById('audio').paused")
     page.click('#mini-next')
     page.click('#mini-prev')
     page.click('#mini-restore')

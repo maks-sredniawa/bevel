@@ -341,6 +341,7 @@ export class Deck {
     this.#bands[band].gain.setTargetAtTime(db, this.#context.currentTime, SMOOTHING_SECONDS);
   }
 
+  // The ramp already ends at 0 by the Web Audio spec, but Chromium leaves the send open once its path goes silent.
   #closeFinishedEcho() {
     const now = this.#context.currentTime;
     if (now < this.#echoEndsAt) return;

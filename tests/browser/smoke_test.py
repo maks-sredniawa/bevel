@@ -34,12 +34,13 @@ ANALYSER_HOOK = """
 const makeAnalyser = AudioContext.prototype.createAnalyser;
 AudioContext.prototype.createAnalyser = function () { window.__analyser = makeAnalyser.call(this); window.__rate = this.sampleRate; return window.__analyser; };
 """
+ANALYSER_SETUP = """(() => {
+  window.__analyser.fftSize = 8192;
+  window.__analyser.smoothingTimeConstant = 0;
+})()"""
 TONE_LEVEL = """(tone) => {
-  const analyser = window.__analyser;
-  analyser.fftSize = 8192;
-  analyser.smoothingTimeConstant = 0;
-  const data = new Float32Array(analyser.frequencyBinCount);
-  analyser.getFloatFrequencyData(data);
+  const data = new Float32Array(window.__analyser.frequencyBinCount);
+  window.__analyser.getFloatFrequencyData(data);
   const binHz = window.__rate / 2 / data.length;
   let loudest = -200;
   for (let i = Math.round(tone * 0.9 / binHz); i <= Math.round(tone * 1.1 / binHz); i++) loudest = Math.max(loudest, data[i]);
@@ -97,7 +98,7 @@ def check_handle_keeps_following(page):
 
 
 def check(driver, name, song):
-    browser = getattr(driver, name).launch(headless=True, channel=os.environ.get('BROWSER_CHANNEL'))
+    browser = getattr(driver, name).launch(headless=True, channel=os.environ.get('BROWSER_CHANNEL'), args=['--mute-audio'] if name == 'chromium' else [])
     context = browser.new_context(viewport={'width': 1280, 'height': 900})
     page = context.new_page()
     page_errors, console_errors, outside, failed = [], [], [], []
@@ -149,7 +150,7 @@ def check(driver, name, song):
 
 
 def check_stalled_output(driver, song):
-    browser = driver.chromium.launch(headless=True, channel=os.environ.get('BROWSER_CHANNEL'))
+    browser = driver.chromium.launch(headless=True, channel=os.environ.get('BROWSER_CHANNEL'), args=['--mute-audio'])
     page = browser.new_context(viewport={'width': 1280, 'height': 900}).new_page()
     page.add_init_script(STALLED_CONTEXT)
     page.goto(BASE + 'index.html')
@@ -171,6 +172,12 @@ def tone_song(path, frequency):
         output.writeframes(b''.join(struct.pack('<h', int(12000 * math.sin(2 * math.pi * frequency * i / TONE_RATE))) for i in range(TONE_RATE * 20)))
 
 
+def settled_tone_level(page):
+    page.evaluate(TONE_LEVEL, TONE_HZ)
+    page.wait_for_timeout(500)
+    return page.evaluate(TONE_LEVEL, TONE_HZ)
+
+
 def check_echo_closes(driver, folder):
     first, second = pathlib.Path(folder) / 'Tester_-_Echoed.wav', pathlib.Path(folder) / 'Tester_-_Later.wav'
     tone_song(first, 300)
@@ -185,6 +192,7 @@ def check_echo_closes(driver, folder):
     page.mouse.click(1, 1)
     page.evaluate('retroDJ.enable(true)')
     wait_until(page, 'window.__analyser !== undefined')
+    page.evaluate(ANALYSER_SETUP)
     page.evaluate("retroDJ.load('a', 'Echoed')")
     wait_until(page, "retroDJ.state().a.track === 'Echoed' && !retroDJ.state().a.analysing", seconds=30)
     page.evaluate("retroDJ.crossfade(-1); retroDJ.play('a')")
@@ -194,13 +202,14 @@ def check_echo_closes(driver, folder):
     page.evaluate("retroDJ.load('a', 'Later')")
     wait_until(page, "retroDJ.state().a.track === 'Later' && !retroDJ.state().a.analysing", seconds=30)
     page.evaluate("retroDJ.play('a')")
-    page.wait_for_timeout(2500)
+    page.wait_for_timeout(2000)
+    playing_level = settled_tone_level(page)
     page.evaluate("retroDJ.pause('a')")
-    page.wait_for_timeout(1200)
-    level = page.evaluate(TONE_LEVEL, TONE_HZ)
+    page.wait_for_timeout(700)
+    level = settled_tone_level(page)
     browser.close()
-    ok = level < -90
-    print(json.dumps({'check': 'echo closes after Echo Out', 'ok': ok, 'level_db': level}), flush=True)
+    ok = playing_level > -60 and level < -90
+    print(json.dumps({'check': 'echo closes after Echo Out', 'ok': ok, 'playing_db': playing_level, 'level_db': level}), flush=True)
     return ok
 
 

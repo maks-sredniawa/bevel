@@ -14,10 +14,12 @@ const TAPE_STOP_FLOOR = 0.05;
 const DEFAULT_BEAT_SECONDS = 0.5;
 const HOT_CUES = 4;
 const KILL_DB = -60;
+const REMEMBERED_SONGS = 4;
 
 let worker = null;
 let nextJob = 1;
 const jobs = new Map();
+const decoded = new Map();
 
 function analyse(buffer) {
   worker ??= new Worker(new URL('./beats-worker.js', import.meta.url), { type: 'module' });
@@ -35,6 +37,21 @@ function analyse(buffer) {
     jobs.set(id, resolve);
     worker.postMessage({ id, samples, sampleRate: buffer.sampleRate }, [samples.buffer]);
   });
+}
+
+async function decodeAndAnalyse(context, file) {
+  const remembered = decoded.get(file);
+  if (remembered) {
+    decoded.delete(file);
+    decoded.set(file, remembered);
+    return remembered;
+  }
+  const buffer = await context.decodeAudioData(await file.arrayBuffer());
+  const { bpm, beats, downbeat } = await analyse(buffer);
+  const song = { buffer, bpm, beats, downbeat };
+  decoded.set(file, song);
+  if (decoded.size > REMEMBERED_SONGS) decoded.delete(decoded.keys().next().value);
+  return song;
 }
 
 export class Deck {
@@ -136,8 +153,7 @@ export class Deck {
     this.loop = null;
     this.cues.fill(null);
     this.#offset = 0;
-    const buffer = await this.#context.decodeAudioData(await file.arrayBuffer());
-    const { bpm, beats, downbeat } = await analyse(buffer);
+    const { buffer, bpm, beats, downbeat } = await decodeAndAnalyse(this.#context, file);
     this.buffer = buffer;
     this.bpm = bpm;
     this.beats = beats;

@@ -20,6 +20,10 @@ SITE_POLICY = (
     "base-uri 'self'; form-action 'none'; frame-ancestors 'none'"
 )
 POLICY = os.environ.get('BEVEL_CSP', SITE_POLICY)
+AUDIO_STATE = """(() => {
+  const audio = document.getElementById('audio');
+  return { paused: audio.paused, time: audio.currentTime, ready: audio.readyState, network: audio.networkState, duration: audio.duration, error: audio.error?.message ?? null };
+})()"""
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -66,14 +70,34 @@ def check(driver, name, song):
     page.set_input_files('#file-input', str(song))
     wait_until(page, "document.querySelectorAll('#tracks .row').length === 1")
     page.click('#play')
-    wait_until(page, "document.getElementById('audio').currentTime > 0.5")
+    try:
+        wait_until(page, "document.getElementById('audio').currentTime > 0.5")
+    except TimeoutError as error:
+        audio = page.evaluate(AUDIO_STATE)
+        raise TimeoutError(f'{error}; audio element: {json.dumps(audio)}; page errors: {page_errors}') from error
     page.evaluate('retroDJ.enable(true)')
     page.wait_for_timeout(500)
     enabled = page.evaluate('retroDJ.state().enabled')
+    page.evaluate('retroDJ.enable(false)')
+    page.evaluate("Object.defineProperty(window, 'documentPictureInPicture', { value: undefined })")
+    page.click('#mini-toggle')
+    wait_until(page, "document.getElementById('app').classList.contains('mini')")
+    mini = {'strip_shown': page.is_visible('#mini'), 'full_player_hidden': not page.is_visible('.work')}
+    mini['label'] = page.inner_text('#mini-marquee')
+    page.click('#mini-play')
+    wait_until(page, "document.getElementById('audio').paused")
+    page.click('#mini-play')
+    wait_until(page, "!document.getElementById('audio').paused")
+    page.click('#mini-next')
+    page.click('#mini-prev')
+    page.click('#mini-restore')
+    wait_until(page, "!document.getElementById('app').classList.contains('mini')")
+    mini['full_player_back'] = page.is_visible('.work')
     browser.close()
     blocked = [text for text in console_errors if 'Content Security Policy' in text or 'Content-Security-Policy' in text]
-    ok = title == 'Bevel' and enabled and not page_errors and not outside and not failed and not blocked
-    print(json.dumps({'browser': name, 'ok': ok, 'page_errors': page_errors, 'blocked': blocked, 'outside': outside, 'failed': failed}, indent=1), flush=True)
+    mini_ok = mini['strip_shown'] and mini['full_player_hidden'] and mini['full_player_back'] and bool(mini['label'])
+    ok = title == 'Bevel' and enabled and mini_ok and not page_errors and not outside and not failed and not blocked
+    print(json.dumps({'browser': name, 'ok': ok, 'mini': mini, 'page_errors': page_errors, 'blocked': blocked, 'outside': outside, 'failed': failed}, indent=1), flush=True)
     return ok
 
 

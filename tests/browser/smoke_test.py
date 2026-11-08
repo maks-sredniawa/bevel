@@ -88,6 +88,7 @@ def check(driver, name, song):
     wait_until(page, "document.getElementById('app').classList.contains('mini')")
     mini = {'strip_shown': page.is_visible('#mini'), 'full_player_hidden': not page.is_visible('.work')}
     mini['label'] = page.inner_text('#mini-marquee')
+    mini['focus_moved_in'] = page.evaluate("document.activeElement.id") == 'mini-play'
     page.click('#mini-play')
     wait_until(page, "document.getElementById('audio').paused")
     page.click('#mini-play')
@@ -97,9 +98,10 @@ def check(driver, name, song):
     page.click('#mini-restore')
     wait_until(page, "!document.getElementById('app').classList.contains('mini')")
     mini['full_player_back'] = page.is_visible('.work')
+    mini['focus_moved_back'] = page.evaluate("document.activeElement.id") == 'mini-toggle'
     browser.close()
     blocked = [text for text in console_errors if 'Content Security Policy' in text or 'Content-Security-Policy' in text]
-    mini_ok = mini['strip_shown'] and mini['full_player_hidden'] and mini['full_player_back'] and bool(mini['label'])
+    mini_ok = all(mini.values())
     ok = title == 'Bevel' and enabled and mini_ok and not page_errors and not outside and not failed and not blocked
     print(json.dumps({'browser': name, 'ok': ok, 'mini': mini, 'page_errors': page_errors, 'blocked': blocked, 'outside': outside, 'failed': failed}, indent=1), flush=True)
     return ok

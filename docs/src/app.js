@@ -810,9 +810,11 @@ function setCompact(on) {
 
 function setMini(on) {
   miniWindow?.close();
+  const changed = settings.mini !== on;
   settings.mini = on;
   byId('app').classList.toggle('mini', on);
   saveSettings();
+  if (changed) (on ? mini.play : byId('mini-toggle')).focus();
 }
 
 async function popOutMini() {

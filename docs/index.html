@@ -18,6 +18,14 @@
     <svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M5 2h7v2h-5v8a2 2 0 1 1-2-2V2z"/></svg>
     <span class="t" id="window-title">Bevel</span>
     <button class="wb out" id="compact" aria-label="Compact mode" aria-pressed="false" title="Compact mode"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 1h8v8H1zM2 3v5h6V3z" fill="currentColor"/></svg></button>
+    <button class="wb out" id="mini-toggle" aria-label="Mini player" title="Mini player"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 6h8v3H1z" fill="currentColor"/></svg></button>
+  </div>
+  <div class="mini-strip" id="mini" role="group" aria-label="Mini player">
+    <button class="btn out" id="mini-prev" aria-label="Previous"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M2 2h2v10H2zM12 2L5 7l7 5z"/></svg></button>
+    <button class="btn out play" id="mini-play" aria-label="Play" aria-pressed="false"><svg viewBox="0 0 14 14" aria-hidden="true"><path id="mini-play-icon" d="M3 2l9 5-9 5z"/></svg></button>
+    <button class="btn out" id="mini-next" aria-label="Next"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M12 2h-2v10h2zM2 2l7 5-7 5z"/></svg></button>
+    <div class="lcd in mini-lcd idle" id="mini-lcd" aria-hidden="true"><div class="title"><span class="marquee" id="mini-marquee">NO MEDIA</span></div></div>
+    <button class="btn out restore" id="mini-restore" aria-label="Full player" title="Full player"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 1h8v8H1zM2 3v5h6V3z" fill="currentColor"/></svg></button>
   </div>
   <nav class="menubar" id="menubar" aria-label="Menu"></nav>
 

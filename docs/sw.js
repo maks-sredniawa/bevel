@@ -1,4 +1,4 @@
-const CACHE = 'bevel-v1';
+const CACHE = 'bevel-v2';
 const FILES = [
   '.', 'index.html', 'styles.css', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png',
   'src/app.js', 'src/audio-info.js', 'src/engine.js', 'src/equalizer.js', 'src/library.js', 'src/playlist.js', 'src/tracks.js', 'src/visualiser.js', 'src/dj/beats.js', 'src/dj/beats-worker.js', 'src/dj/deck.js', 'src/dj/mixer.js', 'src/dj/panel.js', 'src/dj/mixing.js',

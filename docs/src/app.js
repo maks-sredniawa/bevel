@@ -24,6 +24,14 @@ const PLAY_ICON = 'M3 2l9 5-9 5z';
 const PAUSE_ICON = 'M2 2h4v10H2zM8 2h4v10H8z';
 
 const byId = (id) => document.getElementById(id);
+const mini = {
+  root: byId('mini'),
+  lcd: byId('mini-lcd'),
+  marquee: byId('mini-marquee'),
+  play: byId('mini-play'),
+  icon: byId('mini-play-icon'),
+};
+let miniWindow = null;
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const defaults = {
@@ -34,6 +42,7 @@ const defaults = {
   repeat: 'off',
   vizMode: reducedMotion ? 'off' : 'spectrum',
   compact: false,
+  mini: false,
   dj: false,
   eq: { enabled: true, preset: 'Flat', preamp: 0, gains: [...PRESETS.Flat] },
 };
@@ -131,7 +140,10 @@ function renderDeck() {
   if (marquee.textContent !== text) {
     marquee.textContent = text;
     marquee.style.animationDuration = `${Math.max(10, text.length * 0.3)}s`;
+    mini.marquee.textContent = track ? text : 'NO MEDIA';
+    mini.marquee.style.animationDuration = marquee.style.animationDuration;
   }
+  mini.lcd.classList.toggle('idle', !track);
 
   byId('format-line').textContent = track ? `${track.format} ${track.kbps ?? '---'} KBPS` : '--- KBPS';
   const channels = { 1: ' MONO', 2: ' STEREO' }[track?.channels] ?? '';
@@ -143,6 +155,9 @@ function renderDeck() {
   byId('play').setAttribute('aria-label', playing ? 'Pause' : 'Play');
   setPressed(byId('play'), playing);
   byId('play-icon').setAttribute('d', playing ? PAUSE_ICON : PLAY_ICON);
+  mini.play.setAttribute('aria-label', playing ? 'Pause' : 'Play');
+  setPressed(mini.play, playing);
+  mini.icon.setAttribute('d', playing ? PAUSE_ICON : PLAY_ICON);
 
   const title = track ? trackLabel(track) : APP_NAME;
   byId('window-title').textContent = track ? title : APP_NAME;
@@ -162,7 +177,9 @@ function renderTime() {
     seek.max = known ? String(duration) : '1';
     seek.value = known ? String(time) : '0';
   }
-  seek.style.setProperty('--v', `${known && duration > 0 ? (time / duration) * 100 : 0}%`);
+  const progress = `${known && duration > 0 ? (time / duration) * 100 : 0}%`;
+  seek.style.setProperty('--v', progress);
+  mini.lcd.style.setProperty('--v', progress);
   seek.setAttribute('aria-valuetext', known ? `${formatTime(time)} of ${formatTime(duration)}` : 'Nothing loaded');
 }
 
@@ -710,6 +727,7 @@ function select(id, { focus = false } = {}) {
 
 function applySkin() {
   document.documentElement.dataset.skin = settings.skin;
+  if (miniWindow) miniWindow.document.documentElement.dataset.skin = settings.skin;
   document.querySelectorAll('[data-skin-choice]').forEach((button) => {
     setPressed(button, button.dataset.skinChoice === settings.skin);
   });
@@ -787,6 +805,38 @@ function setCompact(on) {
   byId('app').classList.toggle('compact', on);
   setPressed(byId('compact'), on);
   saveSettings();
+}
+
+function setMini(on) {
+  settings.mini = on;
+  byId('app').classList.toggle('mini', on);
+  saveSettings();
+}
+
+async function popOutMini() {
+  if (miniWindow) return;
+  try {
+    miniWindow = await window.documentPictureInPicture.requestWindow({ width: 360, height: 72 });
+  } catch {
+    setMini(true);
+    return;
+  }
+  const { document: floating } = miniWindow;
+  floating.documentElement.dataset.skin = settings.skin;
+  const stylesheet = floating.createElement('link');
+  stylesheet.rel = 'stylesheet';
+  stylesheet.href = new URL('styles.css', location.href).href;
+  floating.head.append(stylesheet);
+  floating.title = APP_NAME;
+  floating.body.className = 'pip';
+  const frame = floating.createElement('div');
+  frame.className = 'app mini';
+  frame.append(floating.adoptNode(mini.root));
+  floating.body.append(frame);
+  miniWindow.addEventListener('pagehide', () => {
+    byId('app').querySelector('.titlebar').after(document.adoptNode(mini.root));
+    miniWindow = null;
+  }, { once: true });
 }
 
 function formatGain(gain) {
@@ -872,6 +922,8 @@ function menuItems() {
     View: [
       ['DJ mode (advanced)', () => setDjMode(!settings.dj)],
       ['Compact mode', () => setCompact(!settings.compact)],
+      ['Mini player', () => setMini(!settings.mini)],
+      ['Mini player in floating window', popOutMini],
       null,
       ['Spectrum', () => setVizMode('spectrum')],
       ['Oscilloscope', () => setVizMode('scope')],
@@ -1261,6 +1313,14 @@ function bindTransport() {
 
 function bindSettingsControls() {
   byId('compact').addEventListener('click', () => setCompact(!settings.compact));
+  byId('mini-toggle').addEventListener('click', popOutMini);
+  byId('mini-prev').addEventListener('click', previous);
+  mini.play.addEventListener('click', togglePlay);
+  byId('mini-next').addEventListener('click', next);
+  byId('mini-restore').addEventListener('click', () => {
+    if (miniWindow) miniWindow.close();
+    else setMini(false);
+  });
   document.querySelectorAll('[data-skin-choice]').forEach((button) => {
     button.addEventListener('click', () => setSkin(button.dataset.skinChoice));
   });
@@ -1348,6 +1408,7 @@ async function startPlayer() {
   applyRepeat();
   setVizMode(settings.vizMode);
   setCompact(settings.compact);
+  setMini(settings.mini);
   applyEq();
   renderPlaylist();
   renderDeck();

@@ -1,0 +1,559 @@
+<!doctype html>
+<html lang="en" data-skin="oatmeal">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Playlist switcher mock</title>
+<style>
+/* styles.css (real, inlined) */
+:root {
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", "Liberation Mono", monospace;
+  --font-ui: system-ui, "Segoe UI", Roboto, "Noto Sans", "Liberation Sans", sans-serif;
+}
+:root[data-skin="oatmeal"] {
+  --desk-a: #4f6b63; --desk-b: #46605a;
+  --face: #d2ccbc; --face-2: #c4bda9; --hi: #ffffff; --lo: #7d766a; --dark: #2b2821;
+  --ink: #1d1a14; --ink-dim: #5f594d;
+  --title-1: #2b3a6b; --title-2: #4c5f9e; --title-ink: #ffffff;
+  --sel: #2b3a6b; --sel-ink: #ffffff;
+  --lcd: #9fb58c; --lcd-2: #8fa67c; --lcd-ink: #182414; --lcd-ghost: rgba(24,36,20,.14);
+  --well: #0f120e; --well-ink: #cfe6b8; --well-dim: #5f7a4c; --viz: #9fe071; --viz-2: #4f8f3a;
+  --focus: #e0471e; --on: #3a9a2f;
+}
+:root[data-skin="nightshift"] {
+  --desk-a: #15161a; --desk-b: #1b1c21;
+  --face: #35383f; --face-2: #2c2f35; --hi: #656a74; --lo: #15171b; --dark: #000000;
+  --ink: #ececec; --ink-dim: #a6aab3;
+  --title-1: #7a4a10; --title-2: #b8741f; --title-ink: #fff4e0;
+  --sel: #c47d1a; --sel-ink: #1a1000;
+  --lcd: #1c1407; --lcd-2: #140e04; --lcd-ink: #f2a93a; --lcd-ghost: rgba(242,169,58,.13);
+  --well: #0a0806; --well-ink: #f2d8a8; --well-dim: #6f5425; --viz: #f2a93a; --viz-2: #8c5a12;
+  --focus: #6ecbff; --on: #f2a93a;
+}
+:root[data-skin="cobalt"] {
+  --desk-a: #243a62; --desk-b: #1f3458;
+  --face: #b4c1d4; --face-2: #a3b2c8; --hi: #eef3fa; --lo: #5a6c86; --dark: #1b2435;
+  --ink: #0f1826; --ink-dim: #45546b;
+  --title-1: #0f2a5e; --title-2: #2a4f93; --title-ink: #ffffff;
+  --sel: #0f2a5e; --sel-ink: #ffffff;
+  --lcd: #cfe0ec; --lcd-2: #bdd1e0; --lcd-ink: #0d2640; --lcd-ghost: rgba(13,38,64,.14);
+  --well: #0b1322; --well-ink: #d8e8ff; --well-dim: #4a6388; --viz: #8ac4ff; --viz-2: #2f6fbd;
+  --focus: #ff6a00; --on: #2fa84f;
+}
+
+* { box-sizing: border-box; }
+html { background: var(--desk-b); }
+body {
+  margin: 0; padding: 24px 16px 40px;
+  font-family: var(--font-mono); font-size: 13px; line-height: 1.3; color: var(--ink);
+  background: repeating-conic-gradient(var(--desk-a) 0 25%, var(--desk-b) 0 50%) 0 0 / 4px 4px;
+  min-height: 100vh;
+}
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px dotted var(--focus); outline-offset: -4px; box-shadow: 0 0 0 2px var(--focus); }
+svg { display: block; shape-rendering: crispEdges; }
+
+.out { border: 2px solid; border-color: var(--hi) var(--dark) var(--dark) var(--hi); box-shadow: inset -1px -1px 0 var(--lo), inset 1px 1px 0 var(--face-2); }
+.in { border: 2px solid; border-color: var(--lo) var(--hi) var(--hi) var(--lo); box-shadow: inset 1px 1px 0 var(--dark); }
+
+.app { max-width: 1080px; margin: 0 auto; background: var(--face); padding: 3px; }
+.titlebar {
+  display: flex; align-items: center; gap: 8px; padding: 4px 6px; color: var(--title-ink);
+  background: linear-gradient(90deg, var(--title-1), var(--title-2));
+  font-weight: 700;
+}
+.titlebar .ico { width: 16px; height: 16px; }
+.titlebar .t { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.titlebar .wb { width: 20px; height: 18px; display: grid; place-items: center; background: var(--face); color: var(--ink); border: 0; padding: 0; }
+.titlebar .wb svg { width: 10px; height: 10px; }
+.menubar { display: flex; gap: 2px; padding: 3px 2px; border-bottom: 1px solid var(--lo); flex-wrap: wrap; }
+.menubar button { background: transparent; border: 1px solid transparent; padding: 4px 9px; min-height: 30px; }
+.menubar button:hover { border-color: var(--hi) var(--lo) var(--lo) var(--hi); }
+
+.work { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px 8px 8px; }
+.col { display: grid; gap: 10px; align-content: start; min-width: 0; }
+
+.group { position: relative; padding: 16px 10px 10px; border: 2px groove var(--hi); margin-top: 8px; }
+.group > legend, .group > .legend { position: absolute; top: -9px; left: 10px; padding: 0 5px; background: var(--face); font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  min-height: 40px; min-width: 40px; padding: 0 12px; background: var(--face); color: var(--ink); font-weight: 700;
+}
+.btn:active, .btn[aria-pressed="true"] { border-color: var(--dark) var(--hi) var(--hi) var(--dark); box-shadow: inset 1px 1px 0 var(--lo); background: var(--face-2); }
+.btn svg { width: 14px; height: 14px; fill: currentColor; }
+.btn .ind { width: 10px; height: 10px; border: 1px solid var(--dark); background: var(--face-2); box-shadow: inset 1px 1px 0 var(--lo); }
+.btn[aria-pressed="true"] .ind { background: var(--on); box-shadow: none; }
+
+.lcd {
+  position: relative; padding: 10px 12px; color: var(--lcd-ink);
+  background: linear-gradient(180deg, var(--lcd), var(--lcd-2));
+  display: grid; gap: 6px;
+}
+.lcd::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, var(--lcd-ghost) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, var(--lcd-ghost) 0 1px, transparent 1px 3px); opacity: .45; }
+.lcd .flags { display: flex; gap: 10px; font-size: 11px; font-weight: 700; }
+.lcd .flags span { opacity: .3; }
+.lcd .flags span.on { opacity: 1; }
+.lcd .flags .trackno { margin-left: auto; opacity: 1; }
+.lcd .title { overflow: hidden; white-space: nowrap; font-size: 18px; font-weight: 700; letter-spacing: .06em; }
+.lcd .title .marquee { display: inline-block; padding-left: 100%; animation: marquee 14s steps(70) infinite -5s; }
+@keyframes marquee { to { transform: translateX(-100%); } }
+.lcd .big { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.lcd .time { font-size: 40px; font-weight: 700; line-height: 1; letter-spacing: .04em; font-variant-numeric: tabular-nums; }
+.lcd .time small { font-size: 14px; letter-spacing: .02em; margin-left: 8px; }
+.lcd .fmt { font-size: 11px; font-weight: 700; text-align: right; line-height: 1.5; }
+.seekrow { display: grid; grid-template-columns: 1fr; gap: 6px; margin-top: 10px; }
+.transport { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.transport .btn { flex: 1; min-height: 44px; }
+.volrow { display: grid; grid-template-columns: auto 1fr auto auto; gap: 10px; align-items: center; margin-top: 10px; }
+.well { background: var(--well); color: var(--well-ink); }
+.viz .well { position: relative; }
+.viz canvas { width: 100%; height: 130px; display: block; }
+.viz .axis { position: absolute; left: 6px; right: 6px; bottom: 2px; display: flex; justify-content: space-between; font-size: 10px; color: var(--well-dim); }
+.radios { display: flex; gap: 14px; margin-bottom: 8px; flex-wrap: wrap; }
+.radios label { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; cursor: pointer; }
+.radios input { appearance: none; width: 14px; height: 14px; margin: 0; border-radius: 50%; border: 2px solid; border-color: var(--lo) var(--hi) var(--hi) var(--lo); background: var(--hi); position: relative; }
+.radios input:checked::after { content: ""; position: absolute; inset: 2px; border-radius: 50%; background: var(--ink); }
+
+.eq-top { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; margin-bottom: 10px; }
+.check { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; font-weight: 700; cursor: pointer; }
+.check input { appearance: none; width: 16px; height: 16px; margin: 0; border: 2px solid; border-color: var(--lo) var(--hi) var(--hi) var(--lo); background: var(--hi); position: relative; }
+.check input:checked::after { content: ""; position: absolute; left: 4px; top: 1px; width: 4px; height: 8px; border: solid var(--ink); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.select { min-height: 40px; padding: 0 28px 0 8px; background: var(--hi) url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8"><path d="M1 2h6L4 6z" fill="%23222"/></svg>') no-repeat right 6px center / 10px; appearance: none; color: #111; font-weight: 700; }
+.faders { display: grid; grid-template-columns: repeat(11, minmax(0, 1fr)); gap: 3px; }
+.fader { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr auto; justify-items: center; gap: 4px; min-width: 0; font-size: 10px; font-weight: 700; }
+.fader.preamp { padding-right: 6px; border-right: 1px solid var(--lo); margin-right: 3px; }
+.fader small { color: var(--ink-dim); font-size: 10px; }
+
+.pl-top { display: grid; grid-template-columns: 1fr; gap: 6px; margin-bottom: 8px; }
+.field { min-height: 40px; padding: 0 8px; background: var(--hi); color: #111; width: 100%; }
+.field::placeholder { color: #666; }
+.pl-btns { display: flex; gap: 4px; flex-wrap: wrap; }
+.pl-btns .btn { min-height: 36px; padding: 0 9px; font-weight: 700; }
+.table { background: var(--hi); color: #111; }
+:root[data-skin="nightshift"] .table { background: #1d1f24; color: var(--ink); }
+.thead, .row { display: grid; grid-template-columns: 22px 40px 3fr 2fr 48px 58px 34px; gap: 6px; align-items: center; }
+.thead > span { padding: 4px 6px; background: var(--face); font-weight: 700; border: 2px solid; border-color: var(--hi) var(--dark) var(--dark) var(--hi); min-height: 30px; display: flex; align-items: center; white-space: nowrap; overflow: hidden; }
+.rows { list-style: none; margin: 0; padding: 0; }
+.row { min-height: 40px; padding: 0 2px; }
+.row:nth-child(even) { background: rgba(0,0,0,.05); }
+:root[data-skin="nightshift"] .row:nth-child(even) { background: rgba(255,255,255,.04); }
+.row > span { padding: 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .grip { cursor: grab; color: var(--ink-dim); padding: 0; display: grid; place-items: center; }
+.row .grip svg { width: 10px; height: 12px; fill: currentColor; }
+.row .no { text-align: right; }
+.row .dur { text-align: right; font-variant-numeric: tabular-nums; }
+.row .rm { width: 32px; height: 32px; display: grid; place-items: center; background: transparent; border: 0; color: inherit; }
+.row .rm svg { width: 10px; height: 10px; fill: currentColor; }
+.row.current { background: var(--sel); color: var(--sel-ink); }
+.row.current .grip { color: var(--sel-ink); }
+.row.current .no::before { content: "▶"; margin-right: 3px; font-size: 8px; }
+.statusbar { display: grid; grid-template-columns: 1fr auto auto; gap: 4px; padding: 6px 8px 4px; font-size: 12px; }
+.statusbar span { padding: 3px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.statusbar .credit { display: flex; align-items: center; gap: 6px; color: var(--ink-dim); }
+.statusbar .credit a { color: inherit; }
+.statusbar .credit svg { width: 14px; height: 16px; shape-rendering: auto; }
+
+.skin-row { display: flex; gap: 4px; align-items: center; }
+.skin-row .btn { min-height: 30px; padding: 0 8px; font-size: 11px; }
+
+@media (prefers-reduced-motion: reduce) { .lcd .title .marquee { animation: none; padding-left: 0; } }
+
+@media (max-width: 760px) {
+  body { padding: 10px 8px 28px; }
+  .work { grid-template-columns: minmax(0, 1fr); padding: 8px 6px 6px; }
+  .menubar button { padding: 4px 7px; }
+  .lcd .time { font-size: 32px; }
+  .lcd .fmt { text-align: left; }
+  .faders { gap: 1px; }
+      .eq-top { grid-template-columns: 1fr 1fr; }
+  .eq-top .skin-row { grid-column: 1 / -1; }
+  .thead, .row { grid-template-columns: 22px 1fr 52px 34px; }
+  .thead .h-no, .thead .h-art, .thead .h-fmt, .row .no, .row .art, .row .fmt { display: none; }
+  .statusbar { grid-template-columns: 1fr; }
+}
+[hidden] { display: none !important; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.lcd.idle .marquee { animation: none; padding-left: 0; }
+.lcd .time, .lcd .fmt { position: relative; }
+
+.range {
+  appearance: none; display: block; width: 100%; height: 28px; margin: 0; padding: 0; background: transparent; cursor: pointer;
+}
+.range::-webkit-slider-runnable-track {
+  height: 20px; background: linear-gradient(90deg, var(--sel) var(--v, 0%), var(--face-2) var(--v, 0%));
+  box-shadow: inset 2px 2px 0 var(--lo), inset -2px -2px 0 var(--hi);
+}
+.range::-moz-range-track {
+  height: 20px; background: var(--face-2); box-shadow: inset 2px 2px 0 var(--lo), inset -2px -2px 0 var(--hi);
+}
+.range::-moz-range-progress { height: 20px; background: var(--sel); }
+.range::-webkit-slider-thumb {
+  appearance: none; width: 14px; height: 28px; margin-top: -4px; background: var(--face);
+  border: 2px solid; border-color: var(--hi) var(--dark) var(--dark) var(--hi);
+}
+.range::-moz-range-thumb {
+  box-sizing: border-box; width: 14px; height: 28px; border-radius: 0; background: var(--face);
+  border: 2px solid; border-color: var(--hi) var(--dark) var(--dark) var(--hi);
+}
+.range:disabled { cursor: default; opacity: .6; }
+.volrow .range { height: 24px; }
+.volrow .range::-webkit-slider-runnable-track, .volrow .range::-moz-range-track, .volrow .range::-moz-range-progress { height: 16px; }
+.volrow .range::-webkit-slider-thumb { height: 24px; }
+.volrow .range::-moz-range-thumb { height: 24px; }
+
+.fader output { font-weight: 700; }
+.fader input {
+  appearance: none; writing-mode: vertical-lr; direction: rtl; width: 22px; height: 110px; margin: 0; padding: 0; background: transparent; cursor: pointer;
+}
+.fader input::-webkit-slider-runnable-track {
+  width: 8px; background: var(--face-2); box-shadow: inset 2px 2px 0 var(--lo), inset -2px -2px 0 var(--hi);
+}
+.fader input::-moz-range-track {
+  width: 8px; background: var(--face-2); box-shadow: inset 2px 2px 0 var(--lo), inset -2px -2px 0 var(--hi);
+}
+.fader input::-webkit-slider-thumb {
+  appearance: none; width: 20px; height: 12px; margin-left: -6px; background: var(--face);
+  border: 2px solid; border-color: var(--hi) var(--dark) var(--dark) var(--hi);
+}
+.fader input::-moz-range-thumb {
+  box-sizing: border-box; width: 20px; height: 12px; border-radius: 0; background: var(--face);
+  border: 2px solid; border-color: var(--hi) var(--dark) var(--dark) var(--hi);
+}
+
+.menu { position: relative; }
+.menu-panel { display: none; position: absolute; top: 100%; left: 0; z-index: 20; min-width: 210px; padding: 2px; background: var(--face); }
+.menu.open .menu-panel { display: grid; }
+.menu:nth-last-child(-n+2) .menu-panel { left: auto; right: 0; }
+.menubar .menu-panel button { display: flex; justify-content: space-between; gap: 18px; width: 100%; min-height: 34px; padding: 0 10px; text-align: left; white-space: nowrap; }
+.menubar .menu-panel button:hover, .menubar .menu-panel button:focus-visible { background: var(--sel); color: var(--sel-ink); border-color: transparent; }
+.menu-panel hr { width: 100%; margin: 2px 0; border: 0; border-top: 1px solid var(--lo); border-bottom: 1px solid var(--hi); }
+.menu-panel kbd { font: inherit; opacity: .7; }
+
+.tracks-scroll { max-height: 560px; overflow-y: auto; scrollbar-gutter: stable; background: var(--hi); color: #111; }
+:root[data-skin="nightshift"] .tracks-scroll { background: #1d1f24; color: var(--ink); }
+.tracks-scroll::-webkit-scrollbar { width: 18px; }
+.tracks-scroll::-webkit-scrollbar-track { background: repeating-conic-gradient(var(--hi) 0 25%, var(--face-2) 0 50%) 0 0 / 4px 4px; }
+.tracks-scroll::-webkit-scrollbar-thumb { background: var(--face); border: 2px solid; border-color: var(--hi) var(--dark) var(--dark) var(--hi); }
+@supports (-moz-appearance: none) { .tracks-scroll { scrollbar-color: var(--face) var(--face-2); } }
+.thead { position: sticky; top: 0; z-index: 2; background: var(--face); color: var(--ink); }
+.row { cursor: default; user-select: none; }
+.row:focus-visible { outline-offset: -2px; box-shadow: none; }
+.row.selected:not(.current) { box-shadow: inset 0 0 0 1px var(--sel); }
+.row.failed .t { text-decoration: line-through; }
+.row.drop-before { box-shadow: inset 0 3px 0 var(--focus); }
+.row.drop-after { box-shadow: inset 0 -3px 0 var(--focus); }
+.row .grip { touch-action: none; min-height: 40px; }
+.filtering .row .grip { visibility: hidden; }
+.row.current .rm { color: var(--sel-ink); }
+.none { padding: 18px 10px; text-align: center; }
+
+.empty { padding: 30px 16px; text-align: center; display: grid; justify-items: center; gap: 10px; background: var(--hi); color: #111; }
+:root[data-skin="nightshift"] .empty { background: #1d1f24; color: var(--ink); }
+.empty .dash { border: 2px dashed #666; padding: 20px 14px; width: 100%; display: grid; justify-items: center; gap: 10px; }
+.empty p { margin: 0; font-weight: 700; }
+.empty small { color: #555; }
+:root[data-skin="nightshift"] .empty small { color: var(--ink-dim); }
+.empty .actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.empty svg { shape-rendering: auto; }
+
+.drop-overlay { position: fixed; inset: 14px; z-index: 40; display: grid; place-items: center; text-align: center; color: var(--ink); background: color-mix(in srgb, var(--face) 88%, transparent); border: 3px dashed var(--sel); outline: 3px dashed var(--focus); pointer-events: none; }
+.drop-overlay b { display: block; font-size: 18px; }
+.drop-overlay span { color: var(--ink-dim); font-size: 12px; }
+
+.app.compact { max-width: 540px; }
+.app.compact .work { grid-template-columns: minmax(0, 1fr); }
+.app.compact .hide-compact { display: none; }
+
+dialog { max-width: 460px; padding: 0; color: var(--ink); background: var(--face); }
+dialog::backdrop { background: rgba(0, 0, 0, .45); }
+dialog .body { display: grid; gap: 8px; padding: 12px; }
+dialog h2 { margin: 0; font-size: 14px; }
+dialog p { margin: 0; }
+dialog table { border-collapse: collapse; }
+dialog td { padding: 2px 12px 2px 0; }
+dialog .close { justify-self: end; }
+
+@media (max-width: 760px) {
+  .fader input { height: 92px; width: 100%; }
+  .fader input::-webkit-slider-thumb { width: 16px; margin-left: -4px; }
+  .fader input::-moz-range-thumb { width: 16px; }
+  .tracks-scroll { max-height: 55vh; }
+}
+
+</style>
+<style>
+/* switcher.css (additions) */
+
+.pl-sets { display: grid; gap: 6px; margin-bottom: 8px; min-width: 0; }
+.pl-tabs {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); align-content: start;
+  max-height: 184px; overflow-y: auto; min-width: 0;
+  background: var(--hi); color: #111;
+}
+:root[data-skin="nightshift"] .pl-tabs { background: #1d1f24; color: var(--ink); }
+.pl-tabs::-webkit-scrollbar { width: 18px; }
+.pl-tabs::-webkit-scrollbar-track { background: repeating-conic-gradient(var(--hi) 0 25%, var(--face-2) 0 50%) 0 0 / 4px 4px; }
+.pl-tabs::-webkit-scrollbar-thumb { background: var(--face); border: 2px solid; border-color: var(--hi) var(--dark) var(--dark) var(--hi); }
+@supports (-moz-appearance: none) { .pl-tabs { scrollbar-color: var(--face) var(--face-2); } }
+
+.pl-tab {
+  display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; align-items: center; gap: 7px;
+  min-height: 40px; min-width: 0; padding: 0 9px 0 7px; border: 0; background: transparent; color: inherit;
+  text-align: left; font-weight: 700;
+  box-shadow: inset -1px -1px 0 color-mix(in srgb, currentColor 14%, transparent);
+}
+.pl-tab .ind { width: 10px; height: 10px; border: 1px solid var(--dark); background: var(--face-2); box-shadow: inset 1px 1px 0 var(--lo); }
+.pl-tab .name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.pl-tab .count { font-weight: 400; color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+.pl-tab:hover:not([aria-pressed="true"]) { background: rgba(0, 0, 0, .06); }
+:root[data-skin="nightshift"] .pl-tab:hover:not([aria-pressed="true"]) { background: rgba(255, 255, 255, .06); }
+.pl-tab[aria-pressed="true"] { background: var(--sel); color: var(--sel-ink); box-shadow: none; }
+.pl-tab[aria-pressed="true"] .ind { background: var(--on); box-shadow: none; }
+.pl-tab[aria-pressed="true"] .count { color: inherit; opacity: .85; }
+.pl-tab:focus-visible { outline-offset: -3px; box-shadow: inset 0 0 0 2px var(--focus); }
+
+.pl-set-btns { display: flex; gap: 4px; flex-wrap: wrap; }
+.pl-set-btns .btn { min-height: 40px; padding: 0 10px; }
+
+:root[data-skin="nightshift"] .field { background: #1d1f24; color: var(--ink); }
+:root[data-skin="nightshift"] .field::placeholder { color: var(--ink-dim); }
+
+.dlg { width: min(420px, calc(100vw - 24px)); }
+.dlg form { display: grid; gap: 8px; margin: 0; }
+.dlg .lbl { font-weight: 700; }
+.dlg .hint { color: var(--ink-dim); font-size: 12px; }
+.dlg .warn { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: start; }
+.dlg .warn svg { width: 32px; height: 32px; shape-rendering: auto; color: var(--ink); }
+.dlg .dlg-btns { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; margin-top: 4px; }
+.dlg .dlg-btns .btn { min-width: 92px; }
+.btn.default { box-shadow: inset -1px -1px 0 var(--lo), inset 1px 1px 0 var(--face-2), 0 0 0 1px var(--dark); }
+
+</style>
+<style>
+/* mock-only */
+.states .focus-demo { outline: 2px dotted var(--focus); outline-offset: -3px; box-shadow: inset 0 0 0 2px var(--focus); }
+
+.states { max-width: 1080px; margin: 36px auto 0; display: grid; gap: 14px; }
+.states h2 { font-size: 12px; letter-spacing: .2em; text-transform: uppercase; color: #fff; margin: 0; text-shadow: 1px 1px 0 #000; }
+.states-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+.states dialog[open] { position: static; margin: 0; }
+.states .panel { background: var(--face); padding: 3px; }
+.states .panel .group { margin: 8px 6px 6px; }
+@media (max-width: 760px) { .states-grid { grid-template-columns: minmax(0, 1fr); } }
+</style>
+</head>
+<body>
+
+<main class="app out" id="app">
+  <div class="titlebar">
+    <svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M5 2h7v2h-5v8a2 2 0 1 1-2-2V2z"/></svg>
+    <span class="t" id="window-title">CD02_Rock_Metal — 61 tracks</span>
+    <button class="wb out" id="compact" aria-label="Compact mode" aria-pressed="false" title="Compact mode"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 1h8v8H1zM2 3v5h6V3z" fill="currentColor"/></svg></button>
+  </div>
+  <nav class="menubar" id="menubar" aria-label="Menu">
+    <div class="menu"><button>File</button></div>
+    <div class="menu"><button>Playlist</button></div>
+    <div class="menu"><button>View</button></div>
+    <div class="menu"><button>Skin</button></div>
+    <div class="menu"><button>Help</button></div>
+  </nav>
+
+  <div class="work">
+    <div class="col">
+      <fieldset class="group">
+        <legend>Deck</legend>
+        <div class="lcd in idle" id="lcd" aria-hidden="true">
+          <div class="flags"><span class="on">PLAY</span><span>SHUF</span><span class="on">RPT</span><span class="on">EQ</span><span>MUTE</span><span class="trackno">TRK 07/61</span></div>
+          <div class="title"><span class="marquee">DIAL-UP HEART - THE VELVET MODEMS</span></div>
+          <div class="big">
+            <div class="time"><span>02:41</span><small>-01:52</small></div>
+            <div class="fmt"><span>MP3 192 KBPS</span><br><span>44100 HZ STEREO</span></div>
+          </div>
+        </div>
+        <div class="seekrow"><input class="range" id="seek" type="range" min="0" max="100" step="1" value="58" style="--v:58%" aria-label="Seek"></div>
+        <div class="transport" role="group" aria-label="Transport">
+          <button class="btn out" aria-label="Previous"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M2 2h2v10H2zM12 2L5 7l7 5z"/></svg></button>
+          <button class="btn out" aria-label="Pause" aria-pressed="true"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 2h3v10H3zM8 2h3v10H8z"/></svg></button>
+          <button class="btn out" aria-label="Stop"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M2 2h10v10H2z"/></svg></button>
+          <button class="btn out" aria-label="Next"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M12 2h-2v10h2zM2 2l7 5-7 5z"/></svg></button>
+          <button class="btn out">Open…</button>
+        </div>
+        <div class="volrow">
+          <label for="volume" style="font-weight:700">Vol</label>
+          <input class="range" id="volume" type="range" min="0" max="100" step="1" value="72" style="--v:72%">
+          <span style="font-weight:700">72%</span>
+          <button class="btn out" aria-pressed="false">Mute</button>
+        </div>
+      </fieldset>
+
+      <fieldset class="group viz hide-compact">
+        <legend>Visualiser</legend>
+        <div class="radios" role="radiogroup" aria-label="Visualiser mode">
+          <label><input type="radio" name="viz-mode" value="spectrum" checked> Spectrum</label>
+          <label><input type="radio" name="viz-mode" value="scope"> Oscilloscope</label>
+          <label><input type="radio" name="viz-mode" value="off"> Off</label>
+        </div>
+        <div class="well in"><canvas id="viz" aria-hidden="true" style="width:100%;height:130px"></canvas><div class="axis" aria-hidden="true"><span>31</span><span>125</span><span>500</span><span>2k</span><span>8k</span><span>16k</span></div></div>
+      </fieldset>
+    </div>
+
+    <div class="col hide-compact">
+      <fieldset class="group playlist">
+        <legend>Playlist</legend>
+
+        <div class="pl-sets">
+          <div class="in pl-tabs" id="playlist-tabs" role="group" aria-label="Playlists">
+            <button class="pl-tab" type="button" data-id="cd01" aria-pressed="false"><span class="ind"></span><span class="name">CD01</span><span class="count">48<span class="sr-only"> tracks</span></span></button>
+            <button class="pl-tab" type="button" data-id="cd02" aria-pressed="true"><span class="ind"></span><span class="name">CD02_Rock_Metal</span><span class="count">61<span class="sr-only"> tracks</span></span></button>
+            <button class="pl-tab" type="button" data-id="cd03" aria-pressed="false"><span class="ind"></span><span class="name">CD03_Dance_90s_00s</span><span class="count">99<span class="sr-only"> tracks</span></span></button>
+            <button class="pl-tab" type="button" data-id="cd04" aria-pressed="false"><span class="ind"></span><span class="name">CD04_80s_Hits</span><span class="count">72<span class="sr-only"> tracks</span></span></button>
+            <button class="pl-tab" type="button" data-id="cd05" aria-pressed="false"><span class="ind"></span><span class="name">CD05_Pop_Hits_2010s_20s</span><span class="count">84<span class="sr-only"> tracks</span></span></button>
+            <button class="pl-tab" type="button" data-id="cd06" aria-pressed="false"><span class="ind"></span><span class="name">CD06_Wife</span><span class="count">36<span class="sr-only"> tracks</span></span></button>
+          </div>
+          <div class="pl-set-btns">
+            <button class="btn out" id="playlist-new">New…</button>
+            <button class="btn out" id="playlist-rename">Rename…</button>
+            <button class="btn out" id="playlist-delete">Delete…</button>
+          </div>
+        </div>
+
+        <div class="pl-top">
+          <input class="field in" id="search" type="search" placeholder="Filter: type to search title or artist" aria-label="Search playlist">
+          <div class="pl-btns">
+            <button class="btn out" id="add">Add…</button>
+            <button class="btn out" id="remove">Remove</button>
+            <button class="btn out" id="clear">Clear</button>
+            <button class="btn out" id="shuffle" aria-pressed="false"><span class="ind"></span>Shuffle</button>
+            <button class="btn out" id="repeat" aria-pressed="true"><span class="ind"></span><span id="repeat-label">Repeat: all</span></button>
+          </div>
+        </div>
+        <div class="in" id="list-wrap">
+          <div class="tracks-scroll" id="tracks-scroll">
+            <div class="thead"><span></span><span class="h-no">#</span><span>Title</span><span class="h-art">Artist</span><span class="h-fmt">Fmt</span><span>Time</span><span></span></div>
+            <ol class="rows" id="tracks">
+              <li class="row" tabindex="-1"><span class="grip"><svg viewBox="0 0 10 12" aria-hidden="true"><path d="M0 1h10v2H0zM0 5h10v2H0zM0 9h10v2H0z"/></svg></span><span class="no">01</span><span class="t">Chrome Horizon</span><span class="art">Iron Lullaby</span><span class="fmt">MP3</span><span class="dur">4:12</span><button class="rm" tabindex="-1" aria-label="Remove"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 0l4 4 4-4 1 1-4 4 4 4-1 1-4-4-4 4-1-1 4-4-4-4z"/></svg></button></li>
+              <li class="row" tabindex="-1"><span class="grip"><svg viewBox="0 0 10 12" aria-hidden="true"><path d="M0 1h10v2H0zM0 5h10v2H0zM0 9h10v2H0z"/></svg></span><span class="no">02</span><span class="t">Rust Belt Choir</span><span class="art">The Velvet Modems</span><span class="fmt">MP3</span><span class="dur">3:48</span><button class="rm" tabindex="-1" aria-label="Remove"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 0l4 4 4-4 1 1-4 4 4 4-1 1-4-4-4 4-1-1 4-4-4-4z"/></svg></button></li>
+              <li class="row" tabindex="-1"><span class="grip"><svg viewBox="0 0 10 12" aria-hidden="true"><path d="M0 1h10v2H0zM0 5h10v2H0zM0 9h10v2H0z"/></svg></span><span class="no">03</span><span class="t">Diesel Hymn</span><span class="art">Low Orbit Saints</span><span class="fmt">FLAC</span><span class="dur">5:03</span><button class="rm" tabindex="-1" aria-label="Remove"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 0l4 4 4-4 1 1-4 4 4 4-1 1-4-4-4 4-1-1 4-4-4-4z"/></svg></button></li>
+              <li class="row" tabindex="-1"><span class="grip"><svg viewBox="0 0 10 12" aria-hidden="true"><path d="M0 1h10v2H0zM0 5h10v2H0zM0 9h10v2H0z"/></svg></span><span class="no">04</span><span class="t">Static Cathedral</span><span class="art">Dial Tone Riot</span><span class="fmt">MP3</span><span class="dur">4:31</span><button class="rm" tabindex="-1" aria-label="Remove"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 0l4 4 4-4 1 1-4 4 4 4-1 1-4-4-4 4-1-1 4-4-4-4z"/></svg></button></li>
+              <li class="row" tabindex="-1"><span class="grip"><svg viewBox="0 0 10 12" aria-hidden="true"><path d="M0 1h10v2H0zM0 5h10v2H0zM0 9h10v2H0z"/></svg></span><span class="no">05</span><span class="t">Nine Volt Heart</span><span class="art">Cassette Ghosts</span><span class="fmt">OGG</span><span class="dur">3:22</span><button class="rm" tabindex="-1" aria-label="Remove"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 0l4 4 4-4 1 1-4 4 4 4-1 1-4-4-4 4-1-1 4-4-4-4z"/></svg></button></li>
+              <li class="row" tabindex="-1"><span class="grip"><svg viewBox="0 0 10 12" aria-hidden="true"><path d="M0 1h10v2H0zM0 5h10v2H0zM0 9h10v2H0z"/></svg></span><span class="no">06</span><span class="t">Overdrive Sunrise</span><span class="art">Iron Lullaby</span><span class="fmt">MP3</span><span class="dur">4:57</span><button class="rm" tabindex="-1" aria-label="Remove"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 0l4 4 4-4 1 1-4 4 4 4-1 1-4-4-4 4-1-1 4-4-4-4z"/></svg></button></li>
+              <li class="row current" tabindex="0"><span class="grip"><svg viewBox="0 0 10 12" aria-hidden="true"><path d="M0 1h10v2H0zM0 5h10v2H0zM0 9h10v2H0z"/></svg></span><span class="no">07</span><span class="t">Dial-Up Heart</span><span class="art">The Velvet Modems</span><span class="fmt">MP3</span><span class="dur">4:33</span><button class="rm" tabindex="-1" aria-label="Remove"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 0l4 4 4-4 1 1-4 4 4 4-1 1-4-4-4 4-1-1 4-4-4-4z"/></svg></button></li>
+              <li class="row" tabindex="-1"><span class="grip"><svg viewBox="0 0 10 12" aria-hidden="true"><path d="M0 1h10v2H0zM0 5h10v2H0zM0 9h10v2H0z"/></svg></span><span class="no">08</span><span class="t">Burned CD 03</span><span class="art">Cassette Ghosts</span><span class="fmt">MP3</span><span class="dur">4:12</span><button class="rm" tabindex="-1" aria-label="Remove"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 0l4 4 4-4 1 1-4 4 4 4-1 1-4-4-4 4-1-1 4-4-4-4z"/></svg></button></li>
+              <li class="row" tabindex="-1"><span class="grip"><svg viewBox="0 0 10 12" aria-hidden="true"><path d="M0 1h10v2H0zM0 5h10v2H0zM0 9h10v2H0z"/></svg></span><span class="no">09</span><span class="t">Thunder on Tape</span><span class="art">Low Orbit Saints</span><span class="fmt">MP3</span><span class="dur">3:59</span><button class="rm" tabindex="-1" aria-label="Remove"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 0l4 4 4-4 1 1-4 4 4 4-1 1-4-4-4 4-1-1 4-4-4-4z"/></svg></button></li>
+              <li class="row" tabindex="-1"><span class="grip"><svg viewBox="0 0 10 12" aria-hidden="true"><path d="M0 1h10v2H0zM0 5h10v2H0zM0 9h10v2H0z"/></svg></span><span class="no">10</span><span class="t">Floppy Disk Blues</span><span class="art">Dial Tone Riot</span><span class="fmt">FLAC</span><span class="dur">2:49</span><button class="rm" tabindex="-1" aria-label="Remove"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 0l4 4 4-4 1 1-4 4 4 4-1 1-4-4-4 4-1-1 4-4-4-4z"/></svg></button></li>
+              <li class="row" tabindex="-1"><span class="grip"><svg viewBox="0 0 10 12" aria-hidden="true"><path d="M0 1h10v2H0zM0 5h10v2H0zM0 9h10v2H0z"/></svg></span><span class="no">11</span><span class="t">Minidisc Morning</span><span class="art">Cassette Ghosts</span><span class="fmt">MP3</span><span class="dur">3:37</span><button class="rm" tabindex="-1" aria-label="Remove"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 0l4 4 4-4 1 1-4 4 4 4-1 1-4-4-4 4-1-1 4-4-4-4z"/></svg></button></li>
+              <li class="row" tabindex="-1"><span class="grip"><svg viewBox="0 0 10 12" aria-hidden="true"><path d="M0 1h10v2H0zM0 5h10v2H0zM0 9h10v2H0z"/></svg></span><span class="no">12</span><span class="t">Last Train to Y2K</span><span class="art">Nina Vaskova</span><span class="fmt">OGG</span><span class="dur">4:51</span><button class="rm" tabindex="-1" aria-label="Remove"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 0l4 4 4-4 1 1-4 4 4 4-1 1-4-4-4 4-1-1 4-4-4-4z"/></svg></button></li>
+            </ol>
+          </div>
+        </div>
+      </fieldset>
+      <div class="skin-row" role="group" aria-label="Skin">
+        <span style="font-weight:700;margin-right:4px">Skin:</span>
+        <button class="btn out" data-skin-choice="oatmeal" aria-pressed="true">Oatmeal</button>
+        <button class="btn out" data-skin-choice="nightshift" aria-pressed="false">Night shift</button>
+        <button class="btn out" data-skin-choice="cobalt" aria-pressed="false">Cobalt</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="statusbar">
+    <span class="in" id="status">61 tracks · 4:12:08 total · drag rows to reorder</span>
+    <span class="in" id="status-format">MP3 192 kbps 44.1 kHz</span>
+    <span class="in credit">
+      <svg viewBox="0 0 18 20" aria-hidden="true"><path fill="currentColor" d="M2 2.5h9a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H8v4H6v-4H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1z"/><path fill="currentColor" d="M12.2 3.2l3 1.2v2.8l-3 1.2z"/><rect x="1.5" y="13" width="15" height="6" rx="1" fill="none" stroke="currentColor" stroke-width="1.2"/><text x="9" y="17.8" text-anchor="middle" font-size="4.6" font-weight="700" font-family="system-ui, sans-serif" fill="currentColor">FREE</text></svg>
+      Free, by <a href="https://maksforge.com">MaksForge</a> · local only
+    </span>
+  </div>
+</main>
+
+<section class="states">
+  <h2>Dialogs</h2>
+  <div class="states-grid">
+    <dialog class="out dlg" id="name-dialog" aria-labelledby="name-title" open>
+      <div class="titlebar"><span class="t" id="name-title">Rename playlist</span></div>
+      <div class="body">
+        <form method="dialog">
+          <label class="lbl" for="name-input">Name</label>
+          <input class="field in" id="name-input" type="text" autocomplete="off" spellcheck="false" maxlength="80" required value="CD02_Rock_Metal">
+          <span class="hint" id="name-hint">Shown in the list and in the window title. The songs are kept.</span>
+          <div class="dlg-btns">
+            <button class="btn out" value="cancel" formnovalidate>Cancel</button>
+            <button class="btn out default" value="ok" id="name-ok">OK</button>
+          </div>
+        </form>
+      </div>
+    </dialog>
+
+    <dialog class="out dlg" id="delete-dialog" aria-labelledby="delete-title" aria-describedby="delete-message" open>
+      <div class="titlebar"><span class="t" id="delete-title">Delete playlist</span></div>
+      <div class="body">
+        <form method="dialog">
+          <div class="warn">
+            <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3 30 28H2z" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/><path d="M16 11v9" stroke="currentColor" stroke-width="3"/><circle cx="16" cy="24" r="1.8" fill="currentColor"/></svg>
+            <p id="delete-message">Delete "CD06_Wife" and its 36 stored songs? This frees the space they take in this browser and cannot be undone.</p>
+          </div>
+          <div class="dlg-btns">
+            <button class="btn out default" value="cancel" autofocus>Cancel</button>
+            <button class="btn out" value="ok" id="delete-ok">Delete</button>
+          </div>
+        </form>
+      </div>
+    </dialog>
+  </div>
+
+  <h2>Switcher with 20 playlists (scrolls) and keyboard focus on one entry</h2>
+  <div class="panel out">
+    <fieldset class="group playlist">
+      <legend>Playlist</legend>
+      <div class="pl-sets">
+        <div class="in pl-tabs" role="group" aria-label="Playlists">
+          <button class="pl-tab" type="button" aria-pressed="false"><span class="ind"></span><span class="name">CD01</span><span class="count">48<span class="sr-only"> tracks</span></span></button>
+          <button class="pl-tab" type="button" aria-pressed="false"><span class="ind"></span><span class="name">CD02_Rock_Metal</span><span class="count">61<span class="sr-only"> tracks</span></span></button>
+          <button class="pl-tab" type="button" aria-pressed="true"><span class="ind"></span><span class="name">CD03_Dance_90s_00s</span><span class="count">99<span class="sr-only"> tracks</span></span></button>
+          <button class="pl-tab" type="button" aria-pressed="false"><span class="ind"></span><span class="name">CD04_80s_Hits</span><span class="count">72<span class="sr-only"> tracks</span></span></button>
+          <button class="pl-tab focus-demo" type="button" aria-pressed="false"><span class="ind"></span><span class="name">CD05_Pop_Hits_2010s_20s</span><span class="count">84<span class="sr-only"> tracks</span></span></button>
+          <button class="pl-tab" type="button" aria-pressed="false"><span class="ind"></span><span class="name">CD06_Wife</span><span class="count">36<span class="sr-only"> tracks</span></span></button>
+          <button class="pl-tab" type="button" aria-pressed="false"><span class="ind"></span><span class="name">CD07_Road_Trip_Summer_2026_Long_Version</span><span class="count">97<span class="sr-only"> tracks</span></span></button>
+          <button class="pl-tab" type="button" aria-pressed="false"><span class="ind"></span><span class="name">CD08_Kids</span><span class="count">40<span class="sr-only"> tracks</span></span></button>
+          <button class="pl-tab" type="button" aria-pressed="false"><span class="ind"></span><span class="name">CD09_Chill</span><span class="count">55<span class="sr-only"> tracks</span></span></button>
+          <button class="pl-tab" type="button" aria-pressed="false"><span class="ind"></span><span class="name">CD10_Workout</span><span class="count">63<span class="sr-only"> tracks</span></span></button>
+          <button class="pl-tab" type="button" aria-pressed="false"><span class="ind"></span><span class="name">CD11_Polish_Classics</span><span class="count">70<span class="sr-only"> tracks</span></span></button>
+          <button class="pl-tab" type="button" aria-pressed="false"><span class="ind"></span><span class="name">CD12_Jazz_Late</span><span class="count">38<span class="sr-only"> tracks</span></span></button>
+          <button class="pl-tab" type="button" aria-pressed="false"><span class="ind"></span><span class="name">CD13_Soundtracks</span><span class="count">52<span class="sr-only"> tracks</span></span></button>
+          <button class="pl-tab" type="button" aria-pressed="false"><span class="ind"></span><span class="name">CD14_Hip_Hop</span><span class="count">66<span class="sr-only"> tracks</span></span></button>
+          <button class="pl-tab" type="button" aria-pressed="false"><span class="ind"></span><span class="name">CD15_Country</span><span class="count">44<span class="sr-only"> tracks</span></span></button>
+          <button class="pl-tab" type="button" aria-pressed="false"><span class="ind"></span><span class="name">CD16_Acoustic</span><span class="count">59<span class="sr-only"> tracks</span></span></button>
+          <button class="pl-tab" type="button" aria-pressed="false"><span class="ind"></span><span class="name">CD17_Christmas</span><span class="count">41<span class="sr-only"> tracks</span></span></button>
+          <button class="pl-tab" type="button" aria-pressed="false"><span class="ind"></span><span class="name">CD18_Party</span><span class="count">88<span class="sr-only"> tracks</span></span></button>
+          <button class="pl-tab" type="button" aria-pressed="false"><span class="ind"></span><span class="name">CD19_Blues</span><span class="count">47<span class="sr-only"> tracks</span></span></button>
+          <button class="pl-tab" type="button" aria-pressed="false"><span class="ind"></span><span class="name">CD20_Misc</span><span class="count">36<span class="sr-only"> tracks</span></span></button>
+        </div>
+        <div class="pl-set-btns">
+          <button class="btn out">New…</button>
+          <button class="btn out">Rename…</button>
+          <button class="btn out">Delete…</button>
+        </div>
+      </div>
+    </fieldset>
+  </div>
+</section>
+
+<script>
+  const skin = new URLSearchParams(location.search).get('skin');
+  if (skin) document.documentElement.dataset.skin = skin;
+  document.querySelectorAll('[data-skin-choice]').forEach((b) => {
+    b.setAttribute('aria-pressed', String(b.dataset.skinChoice === document.documentElement.dataset.skin));
+    b.addEventListener('click', () => { location.search = '?skin=' + b.dataset.skinChoice; });
+  });
+  document.querySelectorAll('.pl-tabs').forEach((box) => box.addEventListener('click', (e) => {
+    const tab = e.target.closest('.pl-tab'); if (!tab) return;
+    box.querySelectorAll('.pl-tab').forEach((t) => t.setAttribute('aria-pressed', String(t === tab)));
+  }));
+  const c = document.getElementById('viz'); const ctx = c.getContext('2d'); c.width = 500; c.height = 130;
+  const cs = getComputedStyle(document.documentElement);
+  for (let i = 0; i < 28; i++) { const h = 20 + Math.round(90 * Math.abs(Math.sin(i * 1.7))); for (let y = 0; y < h; y += 5) { ctx.fillStyle = y > h - 10 ? cs.getPropertyValue('--viz') : cs.getPropertyValue('--viz-2'); ctx.fillRect(8 + i * 17, 118 - y, 12, 3); } }
+</script>
+</body>
+</html>

@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="en" data-skin="oatmeal">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bevel</title>
+<meta name="description" content="A free music player in your browser, in the style of the early 2000s. Your files stay on your device.">
+<meta name="theme-color" content="#2b3a6b">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<main class="app out" id="app">
+  <div class="titlebar">
+    <svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M5 2h7v2h-5v8a2 2 0 1 1-2-2V2z"/></svg>
+    <span class="t" id="window-title">Bevel</span>
+    <button class="wb out" id="compact" aria-label="Compact mode" aria-pressed="false" title="Compact mode"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 1h8v8H1zM2 3v5h6V3z" fill="currentColor"/></svg></button>
+  </div>
+  <nav class="menubar" id="menubar" aria-label="Menu"></nav>
+
+  <fieldset class="group dj hide-compact" id="dj-panel">
+    <legend>DJ mode</legend>
+    <div class="dj-grid">
+
+      <fieldset class="group dj-deck a" id="deck-a" data-state="empty" aria-label="Deck A">
+        <legend>Deck A</legend>
+        <div class="lcd in dj-lcd" aria-hidden="true">
+          <span class="dj-t" id="deck-a-title">No track</span>
+          <span class="dj-bpm"><span id="deck-a-bpm">---.-</span><small>BPM</small></span>
+          <span class="dj-a" id="deck-a-artist"></span>
+          <span class="dj-time" id="deck-a-time">00:00<small>-00:00</small></span>
+          <span class="dj-st" id="deck-a-status">Nothing loaded</span>
+        </div>
+        <div class="well in dj-wave"><canvas id="deck-a-wave" aria-hidden="true"></canvas></div>
+        <div class="dj-transport" role="group" aria-label="Deck A transport">
+          <button class="btn out" id="deck-a-play" aria-label="Play" aria-pressed="false"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 2l9 5-9 5z"/></svg>Play</button>
+          <button class="btn out" id="deck-a-cue">Cue</button>
+          <button class="btn out" id="deck-a-sync" aria-pressed="false"><span class="ind"></span>Sync</button>
+        </div>
+        <div class="dj-faders" role="group" aria-label="Deck A equaliser and pitch">
+          <div class="fader dj-fader">
+            <label for="deck-a-high">High</label>
+            <output id="deck-a-high-value" for="deck-a-high">0.0 dB</output>
+            <input id="deck-a-high" type="range" min="-24" max="6" step="0.5" value="0" aria-valuetext="0 dB">
+            <button class="btn out" id="deck-a-high-kill" aria-pressed="false">Kill</button>
+          </div>
+          <div class="fader dj-fader">
+            <label for="deck-a-mid">Mid</label>
+            <output id="deck-a-mid-value" for="deck-a-mid">0.0 dB</output>
+            <input id="deck-a-mid" type="range" min="-24" max="6" step="0.5" value="0" aria-valuetext="0 dB">
+            <button class="btn out" id="deck-a-mid-kill" aria-pressed="false">Kill</button>
+          </div>
+          <div class="fader dj-fader">
+            <label for="deck-a-low">Low</label>
+            <output id="deck-a-low-value" for="deck-a-low">0.0 dB</output>
+            <input id="deck-a-low" type="range" min="-24" max="6" step="0.5" value="0" aria-valuetext="0 dB">
+            <button class="btn out" id="deck-a-low-kill" aria-pressed="false">Kill</button>
+          </div>
+          <div class="fader dj-fader pitch">
+            <label for="deck-a-pitch">Pitch</label>
+            <output id="deck-a-pitch-value" for="deck-a-pitch">+0.0%</output>
+            <input id="deck-a-pitch" type="range" min="-8" max="8" step="0.1" value="0" aria-valuetext="0%">
+            <span class="ticks">±8%</span>
+          </div>
+        </div>
+        <div class="dj-filter">
+          <label for="deck-a-filter">LP ◂ Filter</label>
+          <input class="range" id="deck-a-filter" type="range" min="-100" max="100" step="1" value="0" style="--v:50%" aria-valuetext="off">
+          <output id="deck-a-filter-value" for="deck-a-filter">▸ HP</output>
+        </div>
+        <div class="dj-row" role="group" aria-label="Deck A loop">
+          <span class="lbl"><span class="ind"></span>Loop</span>
+          <button class="btn out" id="deck-a-loop-1" aria-pressed="false" title="1 bar">1</button>
+          <button class="btn out" id="deck-a-loop-2" aria-pressed="false" title="2 bars">2</button>
+          <button class="btn out" id="deck-a-loop-4" aria-pressed="false" title="4 bars">4</button>
+          <button class="btn out" id="deck-a-loop-8" aria-pressed="false" title="8 bars">8</button>
+        </div>
+        <div class="dj-row" role="group" aria-label="Deck A hot cues">
+          <span class="lbl">Hot<br>cue</span>
+          <button class="btn out hc" id="deck-a-cue-1" data-set="false" aria-label="Hot cue 1, empty"><span class="ind"></span>1</button>
+          <button class="btn out hc" id="deck-a-cue-2" data-set="false" aria-label="Hot cue 2, empty"><span class="ind"></span>2</button>
+          <button class="btn out hc" id="deck-a-cue-3" data-set="false" aria-label="Hot cue 3, empty"><span class="ind"></span>3</button>
+          <button class="btn out hc" id="deck-a-cue-4" data-set="false" aria-label="Hot cue 4, empty"><span class="ind"></span>4</button>
+        </div>
+        <div class="dj-row fx" role="group" aria-label="Deck A effects">
+          <span class="lbl">FX</span>
+          <button class="btn out" id="deck-a-roll" aria-pressed="false"><span class="ind"></span>Roll</button>
+          <button class="btn out" id="deck-a-echo">Echo out</button>
+          <button class="btn out" id="deck-a-tape">Tape stop</button>
+        </div>
+      </fieldset>
+
+      <fieldset class="group dj-mixer" aria-label="Mixer">
+        <legend>Mixer</legend>
+        <div class="dj-levels" role="group" aria-label="Deck levels">
+          <div class="fader dj-fader">
+            <label for="level-a">Level A</label>
+            <output id="level-a-value" for="level-a">100%</output>
+            <input id="level-a" type="range" min="0" max="100" step="1" value="100">
+          </div>
+          <div class="fader dj-fader">
+            <label for="level-b">Level B</label>
+            <output id="level-b-value" for="level-b">100%</output>
+            <input id="level-b" type="range" min="0" max="100" step="1" value="100">
+          </div>
+        </div>
+        <div class="dj-xfader">
+          <label class="lbl" for="crossfader">Crossfader</label>
+          <span aria-hidden="true">A</span>
+          <input class="range" id="crossfader" type="range" min="-100" max="100" step="1" value="-100" aria-valuetext="centre">
+          <span aria-hidden="true">B</span>
+        </div>
+        <div class="dj-auto">
+          <span class="lbl">Auto DJ</span>
+          <button class="btn out" id="auto-dj" aria-pressed="false"><span class="ind"></span>Auto DJ</button>
+          <div class="fld">
+            <label for="auto-style">Style</label>
+            <select class="select in" id="auto-style">
+              <option value="blend">Blend</option>
+              <option value="echo">Echo out</option>
+              <option value="roll">Beat roll</option>
+              <option value="tape">Tape stop</option>
+              <option value="mixed" selected>Mixed</option>
+            </select>
+          </div>
+          <div class="fld">
+            <label for="auto-bars">Bars/song</label>
+            <input class="field in" id="auto-bars" type="number" min="8" max="256" step="4" value="64" inputmode="numeric">
+          </div>
+          <div class="lcd in dj-lcd-s" role="status" aria-live="polite"><span id="auto-status">Off · press Auto DJ to let it mix</span></div>
+        </div>
+      </fieldset>
+
+      <fieldset class="group dj-deck b" id="deck-b" data-state="empty" aria-label="Deck B">
+        <legend>Deck B</legend>
+        <div class="lcd in dj-lcd" aria-hidden="true">
+          <span class="dj-t" id="deck-b-title">No track</span>
+          <span class="dj-bpm"><span id="deck-b-bpm">---.-</span><small>BPM</small></span>
+          <span class="dj-a" id="deck-b-artist"></span>
+          <span class="dj-time" id="deck-b-time">00:00<small>-00:00</small></span>
+          <span class="dj-st" id="deck-b-status">Nothing loaded</span>
+        </div>
+        <div class="well in dj-wave"><canvas id="deck-b-wave" aria-hidden="true"></canvas></div>
+        <div class="dj-transport" role="group" aria-label="Deck B transport">
+          <button class="btn out" id="deck-b-play" aria-label="Play" aria-pressed="false"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 2l9 5-9 5z"/></svg>Play</button>
+          <button class="btn out" id="deck-b-cue">Cue</button>
+          <button class="btn out" id="deck-b-sync" aria-pressed="false"><span class="ind"></span>Sync</button>
+        </div>
+        <div class="dj-faders" role="group" aria-label="Deck B equaliser and pitch">
+          <div class="fader dj-fader">
+            <label for="deck-b-high">High</label>
+            <output id="deck-b-high-value" for="deck-b-high">0.0 dB</output>
+            <input id="deck-b-high" type="range" min="-24" max="6" step="0.5" value="0" aria-valuetext="0 dB">
+            <button class="btn out" id="deck-b-high-kill" aria-pressed="false">Kill</button>
+          </div>
+          <div class="fader dj-fader">
+            <label for="deck-b-mid">Mid</label>
+            <output id="deck-b-mid-value" for="deck-b-mid">0.0 dB</output>
+            <input id="deck-b-mid" type="range" min="-24" max="6" step="0.5" value="0" aria-valuetext="0 dB">
+            <button class="btn out" id="deck-b-mid-kill" aria-pressed="false">Kill</button>
+          </div>
+          <div class="fader dj-fader">
+            <label for="deck-b-low">Low</label>
+            <output id="deck-b-low-value" for="deck-b-low">0.0 dB</output>
+            <input id="deck-b-low" type="range" min="-24" max="6" step="0.5" value="0" aria-valuetext="0 dB">
+            <button class="btn out" id="deck-b-low-kill" aria-pressed="false">Kill</button>
+          </div>
+          <div class="fader dj-fader pitch">
+            <label for="deck-b-pitch">Pitch</label>
+            <output id="deck-b-pitch-value" for="deck-b-pitch">+0.0%</output>
+            <input id="deck-b-pitch" type="range" min="-8" max="8" step="0.1" value="0" aria-valuetext="0%">
+            <span class="ticks">±8%</span>
+          </div>
+        </div>
+        <div class="dj-filter">
+          <label for="deck-b-filter">LP ◂ Filter</label>
+          <input class="range" id="deck-b-filter" type="range" min="-100" max="100" step="1" value="0" style="--v:50%" aria-valuetext="off">
+          <output id="deck-b-filter-value" for="deck-b-filter">▸ HP</output>
+        </div>
+        <div class="dj-row" role="group" aria-label="Deck B loop">
+          <span class="lbl"><span class="ind"></span>Loop</span>
+          <button class="btn out" id="deck-b-loop-1" aria-pressed="false" title="1 bar">1</button>
+          <button class="btn out" id="deck-b-loop-2" aria-pressed="false" title="2 bars">2</button>
+          <button class="btn out" id="deck-b-loop-4" aria-pressed="false" title="4 bars">4</button>
+          <button class="btn out" id="deck-b-loop-8" aria-pressed="false" title="8 bars">8</button>
+        </div>
+        <div class="dj-row" role="group" aria-label="Deck B hot cues">
+          <span class="lbl">Hot<br>cue</span>
+          <button class="btn out hc" id="deck-b-cue-1" data-set="false" aria-label="Hot cue 1, empty"><span class="ind"></span>1</button>
+          <button class="btn out hc" id="deck-b-cue-2" data-set="false" aria-label="Hot cue 2, empty"><span class="ind"></span>2</button>
+          <button class="btn out hc" id="deck-b-cue-3" data-set="false" aria-label="Hot cue 3, empty"><span class="ind"></span>3</button>
+          <button class="btn out hc" id="deck-b-cue-4" data-set="false" aria-label="Hot cue 4, empty"><span class="ind"></span>4</button>
+        </div>
+        <div class="dj-row fx" role="group" aria-label="Deck B effects">
+          <span class="lbl">FX</span>
+          <button class="btn out" id="deck-b-roll" aria-pressed="false"><span class="ind"></span>Roll</button>
+          <button class="btn out" id="deck-b-echo">Echo out</button>
+          <button class="btn out" id="deck-b-tape">Tape stop</button>
+        </div>
+      </fieldset>
+
+    </div>
+  </fieldset>
+
+  <div class="work">
+    <div class="col">
+      <fieldset class="group">
+        <legend id="main-deck-legend">Deck</legend>
+        <div class="lcd in idle" id="lcd" aria-hidden="true">
+          <div class="flags"><span id="flag-play">PLAY</span><span id="flag-shuffle">SHUF</span><span id="flag-repeat">RPT</span><span id="flag-eq">EQ</span><span id="flag-mute">MUTE</span><span class="trackno" id="track-number">TRK --/--</span></div>
+          <div class="title"><span class="marquee" id="marquee">NO MEDIA · DROP OR OPEN</span></div>
+          <div class="big">
+            <div class="time"><span id="elapsed">--:--</span><small id="remaining"></small></div>
+            <div class="fmt"><span id="format-line">--- KBPS</span><br><span id="rate-line">----- HZ</span></div>
+          </div>
+        </div>
+        <div class="sr-only" id="announcer" role="status" aria-live="polite"></div>
+        <div class="seekrow"><input class="range" id="seek" type="range" min="0" max="1" step="0.1" value="0" aria-label="Seek" disabled></div>
+        <div class="transport" role="group" aria-label="Transport">
+          <button class="btn out" id="prev" aria-label="Previous"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M2 2h2v10H2zM12 2L5 7l7 5z"/></svg></button>
+          <button class="btn out" id="play" aria-label="Play" aria-pressed="false"><svg viewBox="0 0 14 14" aria-hidden="true"><path id="play-icon" d="M3 2l9 5-9 5z"/></svg></button>
+          <button class="btn out" id="stop" aria-label="Stop"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M2 2h10v10H2z"/></svg></button>
+          <button class="btn out" id="next" aria-label="Next"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M12 2h-2v10h2zM2 2l7 5-7 5z"/></svg></button>
+          <button class="btn out" id="open">Open…</button>
+        </div>
+        <div class="volrow">
+          <label for="volume" style="font-weight:700">Vol</label>
+          <input class="range" id="volume" type="range" min="0" max="100" step="1" value="72">
+          <span style="font-weight:700" id="volume-value">72%</span>
+          <button class="btn out" id="mute" aria-pressed="false">Mute</button>
+        </div>
+      </fieldset>
+
+      <fieldset class="group viz hide-compact">
+        <legend>Visualiser</legend>
+        <div class="radios" role="radiogroup" aria-label="Visualiser mode">
+          <label><input type="radio" name="viz-mode" value="spectrum"> Spectrum</label>
+          <label><input type="radio" name="viz-mode" value="scope"> Oscilloscope</label>
+          <label><input type="radio" name="viz-mode" value="off"> Off</label>
+        </div>
+        <div class="well in"><canvas id="viz" aria-hidden="true"></canvas><div class="axis" id="viz-axis" aria-hidden="true"><span>31</span><span>125</span><span>500</span><span>2k</span><span>8k</span><span>16k</span></div></div>
+      </fieldset>
+
+      <fieldset class="group eq hide-compact">
+        <legend>Equaliser</legend>
+        <div class="eq-top">
+          <label class="check"><input type="checkbox" id="eq-enabled"> Enabled</label>
+          <select class="select in" id="eq-preset" aria-label="Preset"></select>
+          <button class="btn out" id="eq-reset" style="min-height:40px">Reset</button>
+        </div>
+        <div class="faders" id="faders" role="group" aria-label="Equaliser bands"></div>
+      </fieldset>
+    </div>
+
+    <div class="col hide-compact">
+      <fieldset class="group playlist">
+        <legend>Playlist</legend>
+        <div class="pl-sets">
+          <div class="in pl-tabs" id="playlist-tabs" role="group" aria-label="Playlists">
+          </div>
+          <div class="pl-set-btns">
+            <button class="btn out" id="playlist-new">New…</button>
+            <button class="btn out" id="playlist-rename">Rename…</button>
+            <button class="btn out" id="playlist-delete">Delete…</button>
+          </div>
+        </div>
+        <div class="pl-top">
+          <input class="field in" id="search" type="search" placeholder="Filter: type to search title or artist" aria-label="Search playlist">
+          <div class="pl-btns">
+            <button class="btn out" id="add">Add…</button>
+            <button class="btn out" id="remove">Remove</button>
+            <button class="btn out" id="clear">Clear</button>
+            <button class="btn out" id="shuffle" aria-pressed="false" title="Plays every song once in random order, then reshuffles and goes round again"><span class="ind"></span>Shuffle</button>
+            <button class="btn out" id="repeat" aria-pressed="false"><span class="ind"></span><span id="repeat-label">Repeat: off</span></button>
+          </div>
+        </div>
+        <div class="in" id="list-wrap">
+          <div class="tracks-scroll" id="tracks-scroll">
+            <div class="thead"><span></span><span class="h-no">#</span><span>Title</span><span class="h-art">Artist</span><span class="h-fmt">Fmt</span><span>Time</span><span class="h-load">Deck</span><span></span></div>
+            <ol class="rows" id="tracks"></ol>
+          </div>
+        </div>
+        <div class="empty in" id="empty">
+          <div class="dash">
+            <svg width="36" height="36" viewBox="0 0 36 36" aria-hidden="true"><path d="M18 5v16M11 14l7 7 7-7" fill="none" stroke="currentColor" stroke-width="3"/><path d="M5 23v6h26v-6" fill="none" stroke="currentColor" stroke-width="3"/></svg>
+            <p>Drop audio files or a folder here</p>
+            <small>MP3, FLAC, OGG, WAV, M4A · nothing leaves this device</small>
+            <div class="actions"><button class="btn out" id="open-files">Open files…</button><button class="btn out" id="open-folder">Open folder…</button></div>
+          </div>
+        </div>
+      </fieldset>
+      <div class="skin-row" role="group" aria-label="Skin">
+        <span style="font-weight:700;margin-right:4px">Skin:</span>
+        <button class="btn out" data-skin-choice="oatmeal" aria-pressed="false">Oatmeal</button>
+        <button class="btn out" data-skin-choice="nightshift" aria-pressed="false">Night shift</button>
+        <button class="btn out" data-skin-choice="cobalt" aria-pressed="false">Cobalt</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="statusbar">
+    <span class="in" id="status">No tracks</span>
+    <span class="in" id="status-format">Ready</span>
+    <span class="in credit">
+      <svg viewBox="0 0 18 20" aria-hidden="true"><path fill="currentColor" d="M2 2.5h9a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H8v4H6v-4H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1z"/><path fill="currentColor" d="M12.2 3.2l3 1.2v2.8l-3 1.2z"/><rect x="1.5" y="13" width="15" height="6" rx="1" fill="none" stroke="currentColor" stroke-width="1.2"/><text x="9" y="17.8" text-anchor="middle" font-size="4.6" font-weight="700" font-family="system-ui, sans-serif" fill="currentColor">FREE</text></svg>
+      Free, by <a href="https://maksforge.com">MaksForge</a> · local only
+    </span>
+  </div>
+</main>
+
+<audio id="audio" preload="auto"></audio>
+<input id="file-input" type="file" multiple accept="audio/*,.mp3,.m4a,.aac,.ogg,.oga,.opus,.flac,.wav,.webm" hidden>
+<input id="folder-input" type="file" webkitdirectory hidden>
+<div class="drop-overlay" id="drop-overlay" hidden><div><b id="drop-count">Drop to add files</b><span>They go to the end of the playlist</span></div></div>
+
+<dialog class="out" id="help">
+  <div class="titlebar"><span class="t">Help</span></div>
+  <div class="body">
+    <h2>Keyboard</h2>
+    <table>
+      <tr><td>Space</td><td>Play / pause</td></tr>
+      <tr><td>N / P</td><td>Next / previous track</td></tr>
+      <tr><td>S</td><td>Stop</td></tr>
+      <tr><td>M</td><td>Mute</td></tr>
+      <tr><td>← / →</td><td>Back / forward 5 seconds</td></tr>
+      <tr><td>↑ / ↓</td><td>Volume</td></tr>
+      <tr><td>Folders</td><td>Opening a folder of folders makes one playlist per folder</td></tr>
+      <tr><td>Shuffle</td><td>Every song once in random order, then a fresh shuffle, until you stop</td></tr>
+      <tr><td>In the playlist</td><td>↑ ↓ select, Enter play, Delete remove, Alt+↑ ↓ reorder</td></tr>
+    </table>
+    <p>Your music is played on this device and is never uploaded. The player keeps its own copy of your songs in this browser, so your playlist is still here next time. Clear removes them and frees the space.</p>
+    <form method="dialog" class="close"><button class="btn out">Close</button></form>
+  </div>
+</dialog>
+
+<dialog class="out dlg" id="name-dialog" aria-labelledby="name-title">
+  <div class="titlebar"><span class="t" id="name-title">Rename playlist</span></div>
+  <div class="body">
+    <form method="dialog">
+      <label class="lbl" for="name-input">Name</label>
+      <input class="field in" id="name-input" type="text" autocomplete="off" spellcheck="false" maxlength="80" required>
+      <span class="hint" id="name-hint">Shown in the list and in the window title. The songs are kept.</span>
+      <div class="dlg-btns">
+        <button class="btn out" value="cancel" formnovalidate>Cancel</button>
+        <button class="btn out default" value="ok" id="name-ok">OK</button>
+      </div>
+    </form>
+  </div>
+</dialog>
+
+<dialog class="out dlg" id="delete-dialog" aria-labelledby="delete-title" aria-describedby="delete-message">
+  <div class="titlebar"><span class="t" id="delete-title">Delete playlist</span></div>
+  <div class="body">
+    <form method="dialog">
+      <div class="warn">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3 30 28H2z" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/><path d="M16 11v9" stroke="currentColor" stroke-width="3"/><circle cx="16" cy="24" r="1.8" fill="currentColor"/></svg>
+        <p id="delete-message">Delete "CD06_Wife" and its 36 stored songs? This frees the space they take in this browser and cannot be undone.</p>
+      </div>
+      <div class="dlg-btns">
+        <button class="btn out default" value="cancel" autofocus>Cancel</button>
+        <button class="btn out" value="ok" id="delete-ok">Delete</button>
+      </div>
+    </form>
+  </div>
+</dialog>
+
+<script type="module" src="src/app.js"></script>
+</body>
+</html>

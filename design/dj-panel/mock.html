@@ -1,0 +1,887 @@
+<!doctype html>
+<html lang="en" data-skin="oatmeal">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DJ panel mock</title>
+<style>
+/* styles.css (real, inlined) */
+:root {
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", "Liberation Mono", monospace;
+  --font-ui: system-ui, "Segoe UI", Roboto, "Noto Sans", "Liberation Sans", sans-serif;
+}
+:root[data-skin="oatmeal"] {
+  --desk-a: #4f6b63; --desk-b: #46605a;
+  --face: #d2ccbc; --face-2: #c4bda9; --hi: #ffffff; --lo: #7d766a; --dark: #2b2821;
+  --ink: #1d1a14; --ink-dim: #5f594d;
+  --title-1: #2b3a6b; --title-2: #4c5f9e; --title-ink: #ffffff;
+  --sel: #2b3a6b; --sel-ink: #ffffff;
+  --lcd: #9fb58c; --lcd-2: #8fa67c; --lcd-ink: #182414; --lcd-ghost: rgba(24,36,20,.14);
+  --well: #0f120e; --well-ink: #cfe6b8; --well-dim: #5f7a4c; --viz: #9fe071; --viz-2: #4f8f3a;
+  --focus: #e0471e; --on: #3a9a2f;
+}
+:root[data-skin="nightshift"] {
+  --desk-a: #15161a; --desk-b: #1b1c21;
+  --face: #35383f; --face-2: #2c2f35; --hi: #656a74; --lo: #15171b; --dark: #000000;
+  --ink: #ececec; --ink-dim: #a6aab3;
+  --title-1: #7a4a10; --title-2: #b8741f; --title-ink: #fff4e0;
+  --sel: #c47d1a; --sel-ink: #1a1000;
+  --lcd: #1c1407; --lcd-2: #140e04; --lcd-ink: #f2a93a; --lcd-ghost: rgba(242,169,58,.13);
+  --well: #0a0806; --well-ink: #f2d8a8; --well-dim: #6f5425; --viz: #f2a93a; --viz-2: #8c5a12;
+  --focus: #6ecbff; --on: #f2a93a;
+}
+:root[data-skin="cobalt"] {
+  --desk-a: #243a62; --desk-b: #1f3458;
+  --face: #b4c1d4; --face-2: #a3b2c8; --hi: #eef3fa; --lo: #5a6c86; --dark: #1b2435;
+  --ink: #0f1826; --ink-dim: #45546b;
+  --title-1: #0f2a5e; --title-2: #2a4f93; --title-ink: #ffffff;
+  --sel: #0f2a5e; --sel-ink: #ffffff;
+  --lcd: #cfe0ec; --lcd-2: #bdd1e0; --lcd-ink: #0d2640; --lcd-ghost: rgba(13,38,64,.14);
+  --well: #0b1322; --well-ink: #d8e8ff; --well-dim: #4a6388; --viz: #8ac4ff; --viz-2: #2f6fbd;
+  --focus: #ff6a00; --on: #2fa84f;
+}
+
+* { box-sizing: border-box; }
+html { background: var(--desk-b); }
+body {
+  margin: 0; padding: 24px 16px 40px;
+  font-family: var(--font-mono); font-size: 13px; line-height: 1.3; color: var(--ink);
+  background: repeating-conic-gradient(var(--desk-a) 0 25%, var(--desk-b) 0 50%) 0 0 / 4px 4px;
+  min-height: 100vh;
+}
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px dotted var(--focus); outline-offset: -4px; box-shadow: 0 0 0 2px var(--focus); }
+svg { display: block; shape-rendering: crispEdges; }
+
+.out { border: 2px solid; border-color: var(--hi) var(--dark) var(--dark) var(--hi); box-shadow: inset -1px -1px 0 var(--lo), inset 1px 1px 0 var(--face-2); }
+.in { border: 2px solid; border-color: var(--lo) var(--hi) var(--hi) var(--lo); box-shadow: inset 1px 1px 0 var(--dark); }
+
+.app { max-width: 1080px; margin: 0 auto; background: var(--face); padding: 3px; }
+.titlebar {
+  display: flex; align-items: center; gap: 8px; padding: 4px 6px; color: var(--title-ink);
+  background: linear-gradient(90deg, var(--title-1), var(--title-2));
+  font-weight: 700;
+}
+.titlebar .ico { width: 16px; height: 16px; }
+.titlebar .t { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.titlebar .wb { width: 20px; height: 18px; display: grid; place-items: center; background: var(--face); color: var(--ink); border: 0; padding: 0; }
+.titlebar .wb svg { width: 10px; height: 10px; }
+.menubar { display: flex; gap: 2px; padding: 3px 2px; border-bottom: 1px solid var(--lo); flex-wrap: wrap; }
+.menubar button { background: transparent; border: 1px solid transparent; padding: 4px 9px; min-height: 30px; }
+.menubar button:hover { border-color: var(--hi) var(--lo) var(--lo) var(--hi); }
+
+.work { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px 8px 8px; }
+.col { display: grid; gap: 10px; align-content: start; min-width: 0; }
+
+.group { position: relative; padding: 16px 10px 10px; border: 2px groove var(--hi); margin-top: 8px; }
+.group > legend, .group > .legend { position: absolute; top: -9px; left: 10px; padding: 0 5px; background: var(--face); font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  min-height: 40px; min-width: 40px; padding: 0 12px; background: var(--face); color: var(--ink); font-weight: 700;
+}
+.btn:active, .btn[aria-pressed="true"] { border-color: var(--dark) var(--hi) var(--hi) var(--dark); box-shadow: inset 1px 1px 0 var(--lo); background: var(--face-2); }
+.btn svg { width: 14px; height: 14px; fill: currentColor; }
+.btn .ind { width: 10px; height: 10px; border: 1px solid var(--dark); background: var(--face-2); box-shadow: inset 1px 1px 0 var(--lo); }
+.btn[aria-pressed="true"] .ind { background: var(--on); box-shadow: none; }
+
+.lcd {
+  position: relative; padding: 10px 12px; color: var(--lcd-ink);
+  background: linear-gradient(180deg, var(--lcd), var(--lcd-2));
+  display: grid; gap: 6px;
+}
+.lcd::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, var(--lcd-ghost) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, var(--lcd-ghost) 0 1px, transparent 1px 3px); opacity: .45; }
+.lcd .flags { display: flex; gap: 10px; font-size: 11px; font-weight: 700; }
+.lcd .flags span { opacity: .3; }
+.lcd .flags span.on { opacity: 1; }
+.lcd .flags .trackno { margin-left: auto; opacity: 1; }
+.lcd .title { overflow: hidden; white-space: nowrap; font-size: 18px; font-weight: 700; letter-spacing: .06em; }
+.lcd .title .marquee { display: inline-block; padding-left: 100%; animation: marquee 14s steps(70) infinite -5s; }
+@keyframes marquee { to { transform: translateX(-100%); } }
+.lcd .big { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.lcd .time { font-size: 40px; font-weight: 700; line-height: 1; letter-spacing: .04em; font-variant-numeric: tabular-nums; }
+.lcd .time small { font-size: 14px; letter-spacing: .02em; margin-left: 8px; }
+.lcd .fmt { font-size: 11px; font-weight: 700; text-align: right; line-height: 1.5; }
+.seekrow { display: grid; grid-template-columns: 1fr; gap: 6px; margin-top: 10px; }
+.transport { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.transport .btn { flex: 1; min-height: 44px; }
+.volrow { display: grid; grid-template-columns: auto 1fr auto auto; gap: 10px; align-items: center; margin-top: 10px; }
+.well { background: var(--well); color: var(--well-ink); }
+.viz .well { position: relative; }
+.viz canvas { width: 100%; height: 130px; display: block; }
+.viz .axis { position: absolute; left: 6px; right: 6px; bottom: 2px; display: flex; justify-content: space-between; font-size: 10px; color: var(--well-dim); }
+.radios { display: flex; gap: 14px; margin-bottom: 8px; flex-wrap: wrap; }
+.radios label { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; cursor: pointer; }
+.radios input { appearance: none; width: 14px; height: 14px; margin: 0; border-radius: 50%; border: 2px solid; border-color: var(--lo) var(--hi) var(--hi) var(--lo); background: var(--hi); position: relative; }
+.radios input:checked::after { content: ""; position: absolute; inset: 2px; border-radius: 50%; background: var(--ink); }
+
+.eq-top { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; margin-bottom: 10px; }
+.check { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; font-weight: 700; cursor: pointer; }
+.check input { appearance: none; width: 16px; height: 16px; margin: 0; border: 2px solid; border-color: var(--lo) var(--hi) var(--hi) var(--lo); background: var(--hi); position: relative; }
+.check input:checked::after { content: ""; position: absolute; left: 4px; top: 1px; width: 4px; height: 8px; border: solid var(--ink); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.select { min-height: 40px; padding: 0 28px 0 8px; background: var(--hi) url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8"><path d="M1 2h6L4 6z" fill="%23222"/></svg>') no-repeat right 6px center / 10px; appearance: none; color: #111; font-weight: 700; }
+.faders { display: grid; grid-template-columns: repeat(11, minmax(0, 1fr)); gap: 3px; }
+.fader { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr auto; justify-items: center; gap: 4px; min-width: 0; font-size: 10px; font-weight: 700; }
+.fader.preamp { padding-right: 6px; border-right: 1px solid var(--lo); margin-right: 3px; }
+.fader small { color: var(--ink-dim); font-size: 10px; }
+
+.pl-top { display: grid; grid-template-columns: 1fr; gap: 6px; margin-bottom: 8px; }
+.field { min-height: 40px; padding: 0 8px; background: var(--hi); color: #111; width: 100%; }
+.field::placeholder { color: #666; }
+.pl-btns { display: flex; gap: 4px; flex-wrap: wrap; }
+.pl-btns .btn { min-height: 36px; padding: 0 9px; font-weight: 700; }
+.table { background: var(--hi); color: #111; }
+:root[data-skin="nightshift"] .table { background: #1d1f24; color: var(--ink); }
+.thead, .row { display: grid; grid-template-columns: 22px 40px 3fr 2fr 48px 58px 34px; gap: 6px; align-items: center; }
+.thead > span { padding: 4px 6px; background: var(--face); font-weight: 700; border: 2px solid; border-color: var(--hi) var(--dark) var(--dark) var(--hi); min-height: 30px; display: flex; align-items: center; white-space: nowrap; overflow: hidden; }
+.rows { list-style: none; margin: 0; padding: 0; }
+.row { min-height: 40px; padding: 0 2px; }
+.row:nth-child(even) { background: rgba(0,0,0,.05); }
+:root[data-skin="nightshift"] .row:nth-child(even) { background: rgba(255,255,255,.04); }
+.row > span { padding: 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .grip { cursor: grab; color: var(--ink-dim); padding: 0; display: grid; place-items: center; }
+.row .grip svg { width: 10px; height: 12px; fill: currentColor; }
+.row .no { text-align: right; }
+.row .dur { text-align: right; font-variant-numeric: tabular-nums; }
+.row .rm { width: 32px; height: 32px; display: grid; place-items: center; background: transparent; border: 0; color: inherit; }
+.row .rm svg { width: 10px; height: 10px; fill: currentColor; }
+.row.current { background: var(--sel); color: var(--sel-ink); }
+.row.current .grip { color: var(--sel-ink); }
+.row.current .no::before { content: "▶"; margin-right: 3px; font-size: 8px; }
+.statusbar { display: grid; grid-template-columns: 1fr auto auto; gap: 4px; padding: 6px 8px 4px; font-size: 12px; }
+.statusbar span { padding: 3px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.statusbar .credit { display: flex; align-items: center; gap: 6px; color: var(--ink-dim); }
+.statusbar .credit a { color: inherit; }
+.statusbar .credit svg { width: 14px; height: 16px; shape-rendering: auto; }
+
+.skin-row { display: flex; gap: 4px; align-items: center; }
+.skin-row .btn { min-height: 30px; padding: 0 8px; font-size: 11px; }
+
+@media (prefers-reduced-motion: reduce) { .lcd .title .marquee { animation: none; padding-left: 0; } }
+
+@media (max-width: 760px) {
+  body { padding: 10px 8px 28px; }
+  .work { grid-template-columns: minmax(0, 1fr); padding: 8px 6px 6px; }
+  .menubar button { padding: 4px 7px; }
+  .lcd .time { font-size: 32px; }
+  .lcd .fmt { text-align: left; }
+  .faders { gap: 1px; }
+      .eq-top { grid-template-columns: 1fr 1fr; }
+  .eq-top .skin-row { grid-column: 1 / -1; }
+  .thead, .row { grid-template-columns: 22px 1fr 52px 34px; }
+  .thead .h-no, .thead .h-art, .thead .h-fmt, .row .no, .row .art, .row .fmt { display: none; }
+  .statusbar { grid-template-columns: 1fr; }
+}
+[hidden] { display: none !important; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.lcd.idle .marquee { animation: none; padding-left: 0; }
+.lcd .time, .lcd .fmt { position: relative; }
+
+.range {
+  appearance: none; display: block; width: 100%; height: 28px; margin: 0; padding: 0; background: transparent; cursor: pointer;
+}
+.range::-webkit-slider-runnable-track {
+  height: 20px; background: linear-gradient(90deg, var(--sel) var(--v, 0%), var(--face-2) var(--v, 0%));
+  box-shadow: inset 2px 2px 0 var(--lo), inset -2px -2px 0 var(--hi);
+}
+.range::-moz-range-track {
+  height: 20px; background: var(--face-2); box-shadow: inset 2px 2px 0 var(--lo), inset -2px -2px 0 var(--hi);
+}
+.range::-moz-range-progress { height: 20px; background: var(--sel); }
+.range::-webkit-slider-thumb {
+  appearance: none; width: 14px; height: 28px; margin-top: -4px; background: var(--face);
+  border: 2px solid; border-color: var(--hi) var(--dark) var(--dark) var(--hi);
+}
+.range::-moz-range-thumb {
+  box-sizing: border-box; width: 14px; height: 28px; border-radius: 0; background: var(--face);
+  border: 2px solid; border-color: var(--hi) var(--dark) var(--dark) var(--hi);
+}
+.range:disabled { cursor: default; opacity: .6; }
+.volrow .range { height: 24px; }
+.volrow .range::-webkit-slider-runnable-track, .volrow .range::-moz-range-track, .volrow .range::-moz-range-progress { height: 16px; }
+.volrow .range::-webkit-slider-thumb { height: 24px; }
+.volrow .range::-moz-range-thumb { height: 24px; }
+
+.fader output { font-weight: 700; }
+.fader input {
+  appearance: none; writing-mode: vertical-lr; direction: rtl; width: 22px; height: 110px; margin: 0; padding: 0; background: transparent; cursor: pointer;
+}
+.fader input::-webkit-slider-runnable-track {
+  width: 8px; background: var(--face-2); box-shadow: inset 2px 2px 0 var(--lo), inset -2px -2px 0 var(--hi);
+}
+.fader input::-moz-range-track {
+  width: 8px; background: var(--face-2); box-shadow: inset 2px 2px 0 var(--lo), inset -2px -2px 0 var(--hi);
+}
+.fader input::-webkit-slider-thumb {
+  appearance: none; width: 20px; height: 12px; margin-left: -6px; background: var(--face);
+  border: 2px solid; border-color: var(--hi) var(--dark) var(--dark) var(--hi);
+}
+.fader input::-moz-range-thumb {
+  box-sizing: border-box; width: 20px; height: 12px; border-radius: 0; background: var(--face);
+  border: 2px solid; border-color: var(--hi) var(--dark) var(--dark) var(--hi);
+}
+
+.menu { position: relative; }
+.menu-panel { display: none; position: absolute; top: 100%; left: 0; z-index: 20; min-width: 210px; padding: 2px; background: var(--face); }
+.menu.open .menu-panel { display: grid; }
+.menu:nth-last-child(-n+2) .menu-panel { left: auto; right: 0; }
+.menubar .menu-panel button { display: flex; justify-content: space-between; gap: 18px; width: 100%; min-height: 34px; padding: 0 10px; text-align: left; white-space: nowrap; }
+.menubar .menu-panel button:hover, .menubar .menu-panel button:focus-visible { background: var(--sel); color: var(--sel-ink); border-color: transparent; }
+.menu-panel hr { width: 100%; margin: 2px 0; border: 0; border-top: 1px solid var(--lo); border-bottom: 1px solid var(--hi); }
+.menu-panel kbd { font: inherit; opacity: .7; }
+
+.tracks-scroll { max-height: 560px; overflow-y: auto; scrollbar-gutter: stable; background: var(--hi); color: #111; }
+:root[data-skin="nightshift"] .tracks-scroll { background: #1d1f24; color: var(--ink); }
+.tracks-scroll::-webkit-scrollbar { width: 18px; }
+.tracks-scroll::-webkit-scrollbar-track { background: repeating-conic-gradient(var(--hi) 0 25%, var(--face-2) 0 50%) 0 0 / 4px 4px; }
+.tracks-scroll::-webkit-scrollbar-thumb { background: var(--face); border: 2px solid; border-color: var(--hi) var(--dark) var(--dark) var(--hi); }
+@supports (-moz-appearance: none) { .tracks-scroll { scrollbar-color: var(--face) var(--face-2); } }
+.thead { position: sticky; top: 0; z-index: 2; background: var(--face); color: var(--ink); }
+.row { cursor: default; user-select: none; }
+.row:focus-visible { outline-offset: -2px; box-shadow: none; }
+.row.selected:not(.current) { box-shadow: inset 0 0 0 1px var(--sel); }
+.row.failed .t { text-decoration: line-through; }
+.row.drop-before { box-shadow: inset 0 3px 0 var(--focus); }
+.row.drop-after { box-shadow: inset 0 -3px 0 var(--focus); }
+.row .grip { touch-action: none; min-height: 40px; }
+.filtering .row .grip { visibility: hidden; }
+.row.current .rm { color: var(--sel-ink); }
+.none { padding: 18px 10px; text-align: center; }
+
+.empty { padding: 30px 16px; text-align: center; display: grid; justify-items: center; gap: 10px; background: var(--hi); color: #111; }
+:root[data-skin="nightshift"] .empty { background: #1d1f24; color: var(--ink); }
+.empty .dash { border: 2px dashed #666; padding: 20px 14px; width: 100%; display: grid; justify-items: center; gap: 10px; }
+.empty p { margin: 0; font-weight: 700; }
+.empty small { color: #555; }
+:root[data-skin="nightshift"] .empty small { color: var(--ink-dim); }
+.empty .actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.empty svg { shape-rendering: auto; }
+
+.drop-overlay { position: fixed; inset: 14px; z-index: 40; display: grid; place-items: center; text-align: center; color: var(--ink); background: color-mix(in srgb, var(--face) 88%, transparent); border: 3px dashed var(--sel); outline: 3px dashed var(--focus); pointer-events: none; }
+.drop-overlay b { display: block; font-size: 18px; }
+.drop-overlay span { color: var(--ink-dim); font-size: 12px; }
+
+.app.compact { max-width: 540px; }
+.app.compact .work { grid-template-columns: minmax(0, 1fr); }
+.app.compact .hide-compact { display: none; }
+
+dialog { max-width: 460px; padding: 0; color: var(--ink); background: var(--face); }
+dialog::backdrop { background: rgba(0, 0, 0, .45); }
+dialog .body { display: grid; gap: 8px; padding: 12px; }
+dialog h2 { margin: 0; font-size: 14px; }
+dialog p { margin: 0; }
+dialog table { border-collapse: collapse; }
+dialog td { padding: 2px 12px 2px 0; }
+dialog .close { justify-self: end; }
+
+@media (max-width: 760px) {
+  .fader input { height: 92px; width: 100%; }
+  .fader input::-webkit-slider-thumb { width: 16px; margin-left: -4px; }
+  .fader input::-moz-range-thumb { width: 16px; }
+  .tracks-scroll { max-height: 55vh; }
+}
+
+.pl-sets { display: grid; gap: 6px; margin-bottom: 8px; min-width: 0; }
+.pl-tabs {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); align-content: start;
+  max-height: 184px; overflow-y: auto; min-width: 0;
+  background: var(--hi); color: #111;
+}
+:root[data-skin="nightshift"] .pl-tabs { background: #1d1f24; color: var(--ink); }
+.pl-tabs::-webkit-scrollbar { width: 18px; }
+.pl-tabs::-webkit-scrollbar-track { background: repeating-conic-gradient(var(--hi) 0 25%, var(--face-2) 0 50%) 0 0 / 4px 4px; }
+.pl-tabs::-webkit-scrollbar-thumb { background: var(--face); border: 2px solid; border-color: var(--hi) var(--dark) var(--dark) var(--hi); }
+@supports (-moz-appearance: none) { .pl-tabs { scrollbar-color: var(--face) var(--face-2); } }
+
+.pl-tab {
+  display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; align-items: center; gap: 7px;
+  min-height: 40px; min-width: 0; padding: 0 9px 0 7px; border: 0; background: transparent; color: inherit;
+  text-align: left; font-weight: 700;
+  box-shadow: inset -1px -1px 0 color-mix(in srgb, currentColor 14%, transparent);
+}
+.pl-tab .ind { width: 10px; height: 10px; border: 1px solid var(--dark); background: var(--face-2); box-shadow: inset 1px 1px 0 var(--lo); }
+.pl-tab .name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.pl-tab .count { font-weight: 400; color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+.pl-tab:hover:not([aria-pressed="true"]) { background: rgba(0, 0, 0, .06); }
+:root[data-skin="nightshift"] .pl-tab:hover:not([aria-pressed="true"]) { background: rgba(255, 255, 255, .06); }
+.pl-tab[aria-pressed="true"] { background: var(--sel); color: var(--sel-ink); box-shadow: none; }
+.pl-tab[aria-pressed="true"] .ind { background: var(--on); box-shadow: none; }
+.pl-tab[aria-pressed="true"] .count { color: inherit; opacity: .85; }
+.pl-tab:focus-visible { outline-offset: -3px; box-shadow: inset 0 0 0 2px var(--focus); }
+
+.pl-set-btns { display: flex; gap: 4px; flex-wrap: wrap; }
+.pl-set-btns .btn { min-height: 40px; padding: 0 10px; }
+
+:root[data-skin="nightshift"] .field { background: #1d1f24; color: var(--ink); }
+:root[data-skin="nightshift"] .field::placeholder { color: var(--ink-dim); }
+
+.dlg { width: min(420px, calc(100vw - 24px)); }
+.dlg form { display: grid; gap: 8px; margin: 0; }
+.dlg .lbl { font-weight: 700; }
+.dlg .hint { color: var(--ink-dim); font-size: 12px; }
+.dlg .warn { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: start; }
+.dlg .warn svg { width: 32px; height: 32px; shape-rendering: auto; color: var(--ink); }
+.dlg .dlg-btns { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; margin-top: 4px; }
+.dlg .dlg-btns .btn { min-width: 92px; }
+.btn.default { box-shadow: inset -1px -1px 0 var(--lo), inset 1px 1px 0 var(--face-2), 0 0 0 1px var(--dark); }
+.btn:disabled { color: var(--ink-dim); cursor: default; }
+:root[data-skin] .row.current { background: var(--sel); color: var(--sel-ink); }
+
+</style>
+<style>
+/* dj.css (addition) */
+
+/* DJ mode. Inert until #app has .dj-on (View > DJ mode (advanced)); hidden again in compact mode. */
+#dj-panel { display: none; }
+.app.dj-on #dj-panel { display: block; margin: 2px 8px 10px; min-inline-size: 0; }
+.app.compact #dj-panel { display: none; }
+
+.dj-grid { display: grid; grid-template-columns: minmax(0, 1fr) 236px minmax(0, 1fr); grid-template-areas: "a m b"; gap: 10px; }
+.dj-deck, .dj-mixer { display: grid; gap: 8px; align-content: start; min-inline-size: 0; min-width: 0; }
+.dj-deck.a { grid-area: a; }
+.dj-deck.b { grid-area: b; }
+.dj-mixer { grid-area: m; gap: 10px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "lv" "xf" "au"; }
+
+.dj-lcd { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "t bpm" "a time" "st st"; gap: 1px 10px; padding: 8px 10px; }
+.dj-lcd > * { position: relative; min-width: 0; }
+.dj-lcd .dj-t { grid-area: t; font-size: 15px; font-weight: 700; letter-spacing: .04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dj-lcd .dj-a { grid-area: a; font-size: 11px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: .85; }
+.dj-lcd .dj-bpm { grid-area: bpm; font-size: 20px; font-weight: 700; line-height: 1; text-align: right; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+.dj-lcd .dj-bpm small { font-size: 10px; letter-spacing: .06em; margin-left: 4px; }
+.dj-lcd .dj-time { grid-area: time; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dj-lcd .dj-time small { font-size: 11px; margin-left: 6px; opacity: .8; }
+.dj-lcd .dj-st { grid-area: st; margin-top: 4px; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dj-lcd .dj-st::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 6px; background: currentColor; vertical-align: 0; }
+.dj-deck[data-state="empty"] .dj-lcd .dj-st::before { opacity: .3; }
+.dj-deck[data-state="analysing"] .dj-lcd .dj-st::before { animation: dj-blink 1s steps(2) infinite; }
+
+.dj-wave { position: relative; height: 60px; overflow: hidden; }
+.dj-wave canvas { display: block; width: 100%; height: 100%; }
+.dj-deck[data-state="empty"] .dj-wave canvas, .dj-deck[data-state="analysing"] .dj-wave canvas { visibility: hidden; }
+.dj-deck[data-state="empty"] .dj-wave { background: linear-gradient(var(--well-dim), var(--well-dim)) center / 100% 1px no-repeat, var(--well); }
+.dj-deck[data-state="analysing"] .dj-wave { background: repeating-linear-gradient(90deg, var(--well-dim) 0 4px, var(--well) 4px 12px); animation: dj-scan .6s linear infinite; }
+@keyframes dj-scan { to { background-position: 12px 0; } }
+@keyframes dj-blink { to { opacity: .2; } }
+
+.dj-transport { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 6px; }
+.dj-transport .btn { min-height: 44px; min-width: 0; padding: 0 6px; }
+
+.dj-faders { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.dj-fader { display: grid; grid-template-rows: auto auto 1fr auto; justify-items: center; align-items: start; gap: 4px; min-width: 0; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.dj-fader output { font-size: 11px; text-transform: none; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dj-fader input { height: 96px; width: 40px; }
+.dj-fader .btn { width: 100%; min-width: 0; padding: 0 4px; font-size: 11px; min-height: 40px; }
+.dj-fader.pitch { border-left: 1px solid var(--lo); box-shadow: inset 1px 0 0 var(--hi); padding-left: 6px; }
+.dj-fader .ticks { align-self: end; color: var(--ink-dim); font-size: 9px; text-transform: none; letter-spacing: 0; }
+
+.dj-filter { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: center; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.dj-filter .range::-webkit-slider-runnable-track {
+  background: linear-gradient(90deg, var(--face-2) 0 min(50%, var(--v, 50%)), var(--sel) min(50%, var(--v, 50%)) max(50%, var(--v, 50%)), var(--face-2) max(50%, var(--v, 50%)) 100%);
+}
+.dj-filter .range::-moz-range-progress { background: transparent; }
+.dj-filter .range, .dj-xfader .range { height: 40px; }
+.dj-filter .range::-webkit-slider-runnable-track, .dj-xfader .range::-webkit-slider-runnable-track { margin: 10px 0; }
+.dj-filter .range::-webkit-slider-thumb, .dj-xfader .range::-webkit-slider-thumb { height: 40px; margin-top: -10px; }
+.dj-filter .range::-moz-range-thumb, .dj-xfader .range::-moz-range-thumb { height: 40px; }
+
+.dj-row { display: grid; grid-template-columns: 44px repeat(4, minmax(0, 1fr)); gap: 4px; align-items: center; }
+.dj-row.fx { grid-template-columns: 44px repeat(3, minmax(0, 1fr)); }
+.dj-row .lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; line-height: 1.1; display: inline-flex; align-items: center; gap: 4px; }
+.dj-row .lbl .ind { flex: none; width: 10px; height: 10px; border: 1px solid var(--dark); background: var(--face-2); box-shadow: inset 1px 1px 0 var(--lo); }
+.dj-row:has(.btn[aria-pressed="true"]) .lbl .ind { background: var(--on); box-shadow: none; }
+.dj-row .btn { min-width: 0; padding: 0 4px; font-size: 12px; gap: 5px; white-space: nowrap; }
+.dj-row.fx .btn { font-size: 11px; }
+.dj-row .btn .ind { flex: none; }
+.hc[data-set="false"] { color: var(--ink-dim); }
+.hc[data-set="true"] .ind { background: var(--on); box-shadow: none; }
+
+.dj-levels { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; grid-area: lv; }
+.dj-levels .dj-fader input { height: 150px; }
+.dj-xfader { grid-area: xf; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: center; font-weight: 700; }
+.dj-xfader .lbl { grid-column: 1 / -1; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; text-align: center; }
+.dj-xfader .range::-webkit-slider-runnable-track { background: var(--face-2); }
+.dj-xfader .range::-moz-range-progress { background: transparent; }
+.dj-xfader .range::-webkit-slider-thumb { width: 22px; }
+.dj-xfader .range::-moz-range-thumb { width: 22px; }
+.dj-auto { grid-area: au; display: grid; gap: 6px; padding-top: 10px; border-top: 1px solid var(--lo); box-shadow: inset 0 1px 0 var(--hi); }
+.dj-auto .lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+.dj-auto .btn { justify-content: flex-start; padding: 0 10px; }
+.dj-auto .fld { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 6px; align-items: center; font-weight: 700; font-size: 11px; }
+.dj-auto .select, .dj-auto .field { width: 100%; min-width: 0; }
+.dj-lcd-s { display: block; padding: 7px 9px; font-size: 11px; font-weight: 700; letter-spacing: .03em; line-height: 1.35; min-height: 46px; }
+.dj-lcd-s span { position: relative; }
+
+.app:not(.dj-on) .h-load, .app:not(.dj-on) .row .load { display: none; }
+.app.dj-on .thead, .app.dj-on .row { grid-template-columns: 22px 40px 3fr 2fr 58px 84px 34px; }
+.app.dj-on .thead .h-fmt, .app.dj-on .row .fmt { display: none; }
+.app.dj-on .row { min-height: 46px; }
+.row .load { display: flex; gap: 4px; padding: 0; overflow: visible; }
+.row .ld { flex: none; width: 40px; height: 40px; padding: 0; display: grid; place-items: center; background: var(--face); color: var(--ink); font-weight: 700; }
+.row .ld[aria-pressed="true"] { border-color: var(--dark) var(--hi) var(--hi) var(--dark); background: var(--face-2); box-shadow: inset 1px 1px 0 var(--lo), inset 0 -5px 0 var(--on); }
+
+@media (max-width: 980px) {
+  .dj-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "a b" "m m"; }
+  .dj-mixer { grid-template-columns: auto minmax(0, 1fr) minmax(0, 1.3fr); grid-template-areas: "lv xf au"; align-items: start; }
+  .dj-levels .dj-fader input { height: 110px; }
+  .dj-xfader { align-self: center; }
+  .dj-auto { padding-top: 0; padding-left: 10px; border-top: 0; border-left: 1px solid var(--lo); box-shadow: inset 1px 0 0 var(--hi); }
+}
+
+@media (max-width: 760px) {
+  .app.dj-on #dj-panel { margin: 2px 6px 8px; }
+  .dj-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "a" "m" "b"; }
+  .dj-mixer { grid-template-columns: minmax(0, 1fr); grid-template-areas: "lv" "xf" "au"; }
+  .dj-auto { padding: 10px 0 0; border-left: 0; border-top: 1px solid var(--lo); box-shadow: inset 0 1px 0 var(--hi); }
+  .dj-fader input { width: 100%; }
+  .app.dj-on .thead { grid-template-columns: 22px 1fr 52px 34px; }
+  .app.dj-on .thead .h-load { display: none; }
+  .app.dj-on .row { grid-template-columns: 22px minmax(0, 1fr) 52px 34px; grid-template-rows: 24px 40px; grid-template-areas: "grip t dur rm" "grip load load rm"; row-gap: 2px; padding-bottom: 4px; }
+  .app.dj-on .row .grip { grid-area: grip; }
+  .app.dj-on .row .t { grid-area: t; }
+  .app.dj-on .row .dur { grid-area: dur; }
+  .app.dj-on .row .load { grid-area: load; padding-left: 6px; }
+  .app.dj-on .row .rm { grid-area: rm; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dj-deck[data-state="analysing"] .dj-wave, .dj-deck[data-state="analysing"] .dj-lcd .dj-st::before { animation: none; }
+}
+
+</style>
+<style>
+/* mock-only */
+.states { max-width: 1080px; margin: 36px auto 0; display: grid; gap: 14px; }
+.states h2 { font-size: 12px; letter-spacing: .2em; text-transform: uppercase; color: #fff; margin: 0; text-shadow: 1px 1px 0 #000; }
+.states-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+.states .panel { background: var(--face); padding: 3px 10px 10px; }
+.states .panel .group { min-inline-size: 0; }
+.states .menu-demo { display: inline-grid; position: static; }
+.states .focus-demo { outline: 2px dotted var(--focus); outline-offset: -4px; box-shadow: 0 0 0 2px var(--focus); }
+.states .panel .group .dj-fader input { width: 22px; }
+@media (max-width: 760px) { .states-grid { grid-template-columns: minmax(0, 1fr); } .states .panel .group .dj-fader input { width: 100%; } }
+</style>
+</head>
+<body>
+
+<main class="app out dj-on" id="app">
+  <div class="titlebar">
+    <svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M5 2h7v2h-5v8a2 2 0 1 1-2-2V2z"/></svg>
+    <span class="t" id="window-title">CD02_Rock_Metal — 61 tracks — DJ</span>
+    <button class="wb out" id="compact" aria-label="Compact mode" aria-pressed="false" title="Compact mode"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 1h8v8H1zM2 3v5h6V3z" fill="currentColor"/></svg></button>
+  </div>
+  <nav class="menubar" id="menubar" aria-label="Menu">
+    <div class="menu"><button>File</button></div>
+    <div class="menu"><button>Playlist</button></div>
+    <div class="menu"><button>View</button></div>
+    <div class="menu"><button>Skin</button></div>
+    <div class="menu"><button>Help</button></div>
+  </nav>
+
+  <div class="work">
+    <div class="col">
+      <fieldset class="group">
+        <legend>Deck</legend>
+        <div class="lcd in idle" id="lcd" aria-hidden="true">
+          <div class="flags"><span class="on">PLAY</span><span>SHUF</span><span class="on">RPT</span><span class="on">EQ</span><span>MUTE</span><span class="trackno">TRK 07/61</span></div>
+          <div class="title"><span class="marquee">DIAL-UP HEART - THE VELVET MODEMS</span></div>
+          <div class="big">
+            <div class="time"><span>02:41</span><small>-01:52</small></div>
+            <div class="fmt"><span>MP3 192 KBPS</span><br><span>44100 HZ STEREO</span></div>
+          </div>
+        </div>
+        <div class="seekrow"><input class="range" id="seek" type="range" min="0" max="100" step="1" value="58" style="--v:58%" aria-label="Seek"></div>
+        <div class="transport" role="group" aria-label="Transport">
+          <button class="btn out" aria-label="Previous"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M2 2h2v10H2zM12 2L5 7l7 5z"/></svg></button>
+          <button class="btn out" aria-label="Pause" aria-pressed="true"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 2h3v10H3zM8 2h3v10H8z"/></svg></button>
+          <button class="btn out" aria-label="Stop"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M2 2h10v10H2z"/></svg></button>
+          <button class="btn out" aria-label="Next"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M12 2h-2v10h2zM2 2l7 5-7 5z"/></svg></button>
+          <button class="btn out">Open…</button>
+        </div>
+        <div class="volrow">
+          <label for="volume" style="font-weight:700">Vol</label>
+          <input class="range" id="volume" type="range" min="0" max="100" step="1" value="72" style="--v:72%">
+          <span style="font-weight:700">72%</span>
+          <button class="btn out" aria-pressed="false">Mute</button>
+        </div>
+      </fieldset>
+
+      <fieldset class="group viz hide-compact">
+        <legend>Visualiser</legend>
+        <div class="radios" role="radiogroup" aria-label="Visualiser mode">
+          <label><input type="radio" name="viz-mode" value="spectrum" checked> Spectrum</label>
+          <label><input type="radio" name="viz-mode" value="scope"> Oscilloscope</label>
+          <label><input type="radio" name="viz-mode" value="off"> Off</label>
+        </div>
+        <div class="well in"><canvas id="viz" aria-hidden="true" style="width:100%;height:130px"></canvas><div class="axis" aria-hidden="true"><span>31</span><span>125</span><span>500</span><span>2k</span><span>8k</span><span>16k</span></div></div>
+      </fieldset>
+    </div>
+
+    <div class="col hide-compact">
+      <fieldset class="group playlist">
+        <legend>Playlist</legend>
+
+        <div class="pl-sets">
+          <div class="in pl-tabs" id="playlist-tabs" role="group" aria-label="Playlists">
+            <button class="pl-tab" type="button" data-id="cd01" aria-pressed="false"><span class="ind"></span><span class="name">CD01</span><span class="count">48<span class="sr-only"> tracks</span></span></button>
+            <button class="pl-tab" type="button" data-id="cd02" aria-pressed="true"><span class="ind"></span><span class="name">CD02_Rock_Metal</span><span class="count">61<span class="sr-only"> tracks</span></span></button>
+            <button class="pl-tab" type="button" data-id="cd03" aria-pressed="false"><span class="ind"></span><span class="name">CD03_Dance_90s_00s</span><span class="count">99<span class="sr-only"> tracks</span></span></button>
+            <button class="pl-tab" type="button" data-id="cd04" aria-pressed="false"><span class="ind"></span><span class="name">CD04_80s_Hits</span><span class="count">72<span class="sr-only"> tracks</span></span></button>
+            <button class="pl-tab" type="button" data-id="cd05" aria-pressed="false"><span class="ind"></span><span class="name">CD05_Pop_Hits_2010s_20s</span><span class="count">84<span class="sr-only"> tracks</span></span></button>
+            <button class="pl-tab" type="button" data-id="cd06" aria-pressed="false"><span class="ind"></span><span class="name">CD06_Wife</span><span class="count">36<span class="sr-only"> tracks</span></span></button>
+          </div>
+          <div class="pl-set-btns">
+            <button class="btn out" id="playlist-new">New…</button>
+            <button class="btn out" id="playlist-rename">Rename…</button>
+            <button class="btn out" id="playlist-delete">Delete…</button>
+          </div>
+        </div>
+
+        <div class="pl-top">
+          <input class="field in" id="search" type="search" placeholder="Filter: type to search title or artist" aria-label="Search playlist">
+          <div class="pl-btns">
+            <button class="btn out" id="add">Add…</button>
+            <button class="btn out" id="remove">Remove</button>
+            <button class="btn out" id="clear">Clear</button>
+            <button class="btn out" id="shuffle" aria-pressed="false"><span class="ind"></span>Shuffle</button>
+            <button class="btn out" id="repeat" aria-pressed="true"><span class="ind"></span><span id="repeat-label">Repeat: all</span></button>
+          </div>
+        </div>
+        <div class="in" id="list-wrap">
+          <div class="tracks-scroll" id="tracks-scroll">
+            <div class="thead"><span></span><span class="h-no">#</span><span>Title</span><span class="h-art">Artist</span><span class="h-fmt">Fmt</span><span>Time</span><span class="h-load">Deck</span><span></span></div>
+            <ol class="rows" id="tracks">
+              <li class="row" tabindex="-1"><span class="grip"><svg viewBox="0 0 10 12" aria-hidden="true"><path d="M0 1h10v2H0zM0 5h10v2H0zM0 9h10v2H0z"/></svg></span><span class="no">01</span><span class="t">Chrome Horizon</span><span class="art">Iron Lullaby</span><span class="fmt">MP3</span><span class="dur">4:12</span><span class="load"><button class="ld out" type="button" data-deck="a" tabindex="-1" aria-pressed="false" aria-label="Load Chrome Horizon to deck A">A</button><button class="ld out" type="button" data-deck="b" tabindex="-1" aria-pressed="false" aria-label="Load Chrome Horizon to deck B">B</button></span><button class="rm" tabindex="-1" aria-label="Remove"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 0l4 4 4-4 1 1-4 4 4 4-1 1-4-4-4 4-1-1 4-4-4-4z"/></svg></button></li>
+              <li class="row" tabindex="-1"><span class="grip"><svg viewBox="0 0 10 12" aria-hidden="true"><path d="M0 1h10v2H0zM0 5h10v2H0zM0 9h10v2H0z"/></svg></span><span class="no">02</span><span class="t">Rust Belt Choir</span><span class="art">The Velvet Modems</span><span class="fmt">MP3</span><span class="dur">3:48</span><span class="load"><button class="ld out" type="button" data-deck="a" tabindex="-1" aria-pressed="false" aria-label="Load Rust Belt Choir to deck A">A</button><button class="ld out" type="button" data-deck="b" tabindex="-1" aria-pressed="false" aria-label="Load Rust Belt Choir to deck B">B</button></span><button class="rm" tabindex="-1" aria-label="Remove"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 0l4 4 4-4 1 1-4 4 4 4-1 1-4-4-4 4-1-1 4-4-4-4z"/></svg></button></li>
+              <li class="row" tabindex="-1"><span class="grip"><svg viewBox="0 0 10 12" aria-hidden="true"><path d="M0 1h10v2H0zM0 5h10v2H0zM0 9h10v2H0z"/></svg></span><span class="no">03</span><span class="t">Diesel Hymn</span><span class="art">Low Orbit Saints</span><span class="fmt">FLAC</span><span class="dur">5:03</span><span class="load"><button class="ld out" type="button" data-deck="a" tabindex="-1" aria-pressed="false" aria-label="Load Diesel Hymn to deck A">A</button><button class="ld out" type="button" data-deck="b" tabindex="-1" aria-pressed="false" aria-label="Load Diesel Hymn to deck B">B</button></span><button class="rm" tabindex="-1" aria-label="Remove"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 0l4 4 4-4 1 1-4 4 4 4-1 1-4-4-4 4-1-1 4-4-4-4z"/></svg></button></li>
+              <li class="row" tabindex="-1"><span class="grip"><svg viewBox="0 0 10 12" aria-hidden="true"><path d="M0 1h10v2H0zM0 5h10v2H0zM0 9h10v2H0z"/></svg></span><span class="no">04</span><span class="t">Static Cathedral</span><span class="art">Dial Tone Riot</span><span class="fmt">MP3</span><span class="dur">4:31</span><span class="load"><button class="ld out" type="button" data-deck="a" tabindex="-1" aria-pressed="false" aria-label="Load Static Cathedral to deck A">A</button><button class="ld out" type="button" data-deck="b" tabindex="-1" aria-pressed="false" aria-label="Load Static Cathedral to deck B">B</button></span><button class="rm" tabindex="-1" aria-label="Remove"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 0l4 4 4-4 1 1-4 4 4 4-1 1-4-4-4 4-1-1 4-4-4-4z"/></svg></button></li>
+              <li class="row" tabindex="-1"><span class="grip"><svg viewBox="0 0 10 12" aria-hidden="true"><path d="M0 1h10v2H0zM0 5h10v2H0zM0 9h10v2H0z"/></svg></span><span class="no">05</span><span class="t">Nine Volt Heart</span><span class="art">Cassette Ghosts</span><span class="fmt">OGG</span><span class="dur">3:22</span><span class="load"><button class="ld out" type="button" data-deck="a" tabindex="-1" aria-pressed="false" aria-label="Load Nine Volt Heart to deck A">A</button><button class="ld out" type="button" data-deck="b" tabindex="-1" aria-pressed="false" aria-label="Load Nine Volt Heart to deck B">B</button></span><button class="rm" tabindex="-1" aria-label="Remove"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 0l4 4 4-4 1 1-4 4 4 4-1 1-4-4-4 4-1-1 4-4-4-4z"/></svg></button></li>
+              <li class="row" tabindex="-1"><span class="grip"><svg viewBox="0 0 10 12" aria-hidden="true"><path d="M0 1h10v2H0zM0 5h10v2H0zM0 9h10v2H0z"/></svg></span><span class="no">06</span><span class="t">Overdrive Sunrise</span><span class="art">Iron Lullaby</span><span class="fmt">MP3</span><span class="dur">4:57</span><span class="load"><button class="ld out" type="button" data-deck="a" tabindex="-1" aria-pressed="false" aria-label="Load Overdrive Sunrise to deck A">A</button><button class="ld out" type="button" data-deck="b" tabindex="-1" aria-pressed="false" aria-label="Load Overdrive Sunrise to deck B">B</button></span><button class="rm" tabindex="-1" aria-label="Remove"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 0l4 4 4-4 1 1-4 4 4 4-1 1-4-4-4 4-1-1 4-4-4-4z"/></svg></button></li>
+              <li class="row current" tabindex="0"><span class="grip"><svg viewBox="0 0 10 12" aria-hidden="true"><path d="M0 1h10v2H0zM0 5h10v2H0zM0 9h10v2H0z"/></svg></span><span class="no">07</span><span class="t">Dial-Up Heart</span><span class="art">The Velvet Modems</span><span class="fmt">MP3</span><span class="dur">4:33</span><span class="load"><button class="ld out" type="button" data-deck="a" tabindex="-1" aria-pressed="true" aria-label="Load Dial-Up Heart to deck A">A</button><button class="ld out" type="button" data-deck="b" tabindex="-1" aria-pressed="false" aria-label="Load Dial-Up Heart to deck B">B</button></span><button class="rm" tabindex="-1" aria-label="Remove"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 0l4 4 4-4 1 1-4 4 4 4-1 1-4-4-4 4-1-1 4-4-4-4z"/></svg></button></li>
+              <li class="row" tabindex="-1"><span class="grip"><svg viewBox="0 0 10 12" aria-hidden="true"><path d="M0 1h10v2H0zM0 5h10v2H0zM0 9h10v2H0z"/></svg></span><span class="no">08</span><span class="t">Burned CD 03</span><span class="art">Cassette Ghosts</span><span class="fmt">MP3</span><span class="dur">4:12</span><span class="load"><button class="ld out" type="button" data-deck="a" tabindex="-1" aria-pressed="false" aria-label="Load Burned CD 03 to deck A">A</button><button class="ld out" type="button" data-deck="b" tabindex="-1" aria-pressed="false" aria-label="Load Burned CD 03 to deck B">B</button></span><button class="rm" tabindex="-1" aria-label="Remove"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 0l4 4 4-4 1 1-4 4 4 4-1 1-4-4-4 4-1-1 4-4-4-4z"/></svg></button></li>
+              <li class="row" tabindex="-1"><span class="grip"><svg viewBox="0 0 10 12" aria-hidden="true"><path d="M0 1h10v2H0zM0 5h10v2H0zM0 9h10v2H0z"/></svg></span><span class="no">09</span><span class="t">Thunder on Tape</span><span class="art">Low Orbit Saints</span><span class="fmt">MP3</span><span class="dur">3:59</span><span class="load"><button class="ld out" type="button" data-deck="a" tabindex="-1" aria-pressed="false" aria-label="Load Thunder on Tape to deck A">A</button><button class="ld out" type="button" data-deck="b" tabindex="-1" aria-pressed="false" aria-label="Load Thunder on Tape to deck B">B</button></span><button class="rm" tabindex="-1" aria-label="Remove"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 0l4 4 4-4 1 1-4 4 4 4-1 1-4-4-4 4-1-1 4-4-4-4z"/></svg></button></li>
+              <li class="row" tabindex="-1"><span class="grip"><svg viewBox="0 0 10 12" aria-hidden="true"><path d="M0 1h10v2H0zM0 5h10v2H0zM0 9h10v2H0z"/></svg></span><span class="no">10</span><span class="t">Floppy Disk Blues</span><span class="art">Dial Tone Riot</span><span class="fmt">FLAC</span><span class="dur">2:49</span><span class="load"><button class="ld out" type="button" data-deck="a" tabindex="-1" aria-pressed="false" aria-label="Load Floppy Disk Blues to deck A">A</button><button class="ld out" type="button" data-deck="b" tabindex="-1" aria-pressed="false" aria-label="Load Floppy Disk Blues to deck B">B</button></span><button class="rm" tabindex="-1" aria-label="Remove"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 0l4 4 4-4 1 1-4 4 4 4-1 1-4-4-4 4-1-1 4-4-4-4z"/></svg></button></li>
+              <li class="row" tabindex="-1"><span class="grip"><svg viewBox="0 0 10 12" aria-hidden="true"><path d="M0 1h10v2H0zM0 5h10v2H0zM0 9h10v2H0z"/></svg></span><span class="no">11</span><span class="t">Minidisc Morning</span><span class="art">Cassette Ghosts</span><span class="fmt">MP3</span><span class="dur">3:37</span><span class="load"><button class="ld out" type="button" data-deck="a" tabindex="-1" aria-pressed="false" aria-label="Load Minidisc Morning to deck A">A</button><button class="ld out" type="button" data-deck="b" tabindex="-1" aria-pressed="false" aria-label="Load Minidisc Morning to deck B">B</button></span><button class="rm" tabindex="-1" aria-label="Remove"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 0l4 4 4-4 1 1-4 4 4 4-1 1-4-4-4 4-1-1 4-4-4-4z"/></svg></button></li>
+              <li class="row" tabindex="-1"><span class="grip"><svg viewBox="0 0 10 12" aria-hidden="true"><path d="M0 1h10v2H0zM0 5h10v2H0zM0 9h10v2H0z"/></svg></span><span class="no">12</span><span class="t">Last Train to Y2K</span><span class="art">Nina Vaskova</span><span class="fmt">OGG</span><span class="dur">4:51</span><span class="load"><button class="ld out" type="button" data-deck="a" tabindex="-1" aria-pressed="false" aria-label="Load Last Train to Y2K to deck A">A</button><button class="ld out" type="button" data-deck="b" tabindex="-1" aria-pressed="true" aria-label="Load Last Train to Y2K to deck B">B</button></span><button class="rm" tabindex="-1" aria-label="Remove"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 0l4 4 4-4 1 1-4 4 4 4-1 1-4-4-4 4-1-1 4-4-4-4z"/></svg></button></li>
+            </ol>
+          </div>
+        </div>
+      </fieldset>
+      <div class="skin-row" role="group" aria-label="Skin">
+        <span style="font-weight:700;margin-right:4px">Skin:</span>
+        <button class="btn out" data-skin-choice="oatmeal" aria-pressed="true">Oatmeal</button>
+        <button class="btn out" data-skin-choice="nightshift" aria-pressed="false">Night shift</button>
+        <button class="btn out" data-skin-choice="cobalt" aria-pressed="false">Cobalt</button>
+      </div>
+    </div>
+  </div>
+
+  <fieldset class="group dj hide-compact" id="dj-panel">
+    <legend>DJ mode</legend>
+    <div class="dj-grid">
+
+      <fieldset class="group dj-deck a" id="deck-a" data-state="ready" aria-label="Deck A">
+        <legend>Deck A</legend>
+        <div class="lcd in dj-lcd" aria-hidden="true">
+          <span class="dj-t" id="deck-a-title">Dial-Up Heart</span>
+          <span class="dj-bpm"><span id="deck-a-bpm">128.0</span><small>BPM</small></span>
+          <span class="dj-a" id="deck-a-artist">The Velvet Modems</span>
+          <span class="dj-time" id="deck-a-time">01:23<small>-03:10</small></span>
+          <span class="dj-st" id="deck-a-status">Playing · master</span>
+        </div>
+        <div class="well in dj-wave"><canvas id="deck-a-wave" aria-hidden="true"></canvas></div>
+        <div class="dj-transport" role="group" aria-label="Deck A transport">
+          <button class="btn out" id="deck-a-play" aria-label="Play" aria-pressed="false"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 2l9 5-9 5z"/></svg>Play</button>
+          <button class="btn out" id="deck-a-cue">Cue</button>
+          <button class="btn out" id="deck-a-sync" aria-pressed="false"><span class="ind"></span>Sync</button>
+        </div>
+        <div class="dj-faders" role="group" aria-label="Deck A equaliser and pitch">
+          <div class="fader dj-fader">
+            <label for="deck-a-high">High</label>
+            <output id="deck-a-high-value" for="deck-a-high">0.0 dB</output>
+            <input id="deck-a-high" type="range" min="-24" max="6" step="0.5" value="0" aria-valuetext="0 dB">
+            <button class="btn out" id="deck-a-high-kill" aria-pressed="false">Kill</button>
+          </div>
+          <div class="fader dj-fader">
+            <label for="deck-a-mid">Mid</label>
+            <output id="deck-a-mid-value" for="deck-a-mid">0.0 dB</output>
+            <input id="deck-a-mid" type="range" min="-24" max="6" step="0.5" value="0" aria-valuetext="0 dB">
+            <button class="btn out" id="deck-a-mid-kill" aria-pressed="false">Kill</button>
+          </div>
+          <div class="fader dj-fader">
+            <label for="deck-a-low">Low</label>
+            <output id="deck-a-low-value" for="deck-a-low">0.0 dB</output>
+            <input id="deck-a-low" type="range" min="-24" max="6" step="0.5" value="0" aria-valuetext="0 dB">
+            <button class="btn out" id="deck-a-low-kill" aria-pressed="false">Kill</button>
+          </div>
+          <div class="fader dj-fader pitch">
+            <label for="deck-a-pitch">Pitch</label>
+            <output id="deck-a-pitch-value" for="deck-a-pitch">+0.0%</output>
+            <input id="deck-a-pitch" type="range" min="-8" max="8" step="0.1" value="0" aria-valuetext="0%">
+            <span class="ticks">±8%</span>
+          </div>
+        </div>
+        <div class="dj-filter">
+          <label for="deck-a-filter">LP ◂ Filter</label>
+          <input class="range" id="deck-a-filter" type="range" min="-100" max="100" step="1" value="0" style="--v:50%" aria-valuetext="off">
+          <output id="deck-a-filter-value" for="deck-a-filter">▸ HP</output>
+        </div>
+        <div class="dj-row" role="group" aria-label="Deck A loop">
+          <span class="lbl"><span class="ind"></span>Loop</span>
+          <button class="btn out" id="deck-a-loop-1" aria-pressed="false" title="1 bar">1</button>
+          <button class="btn out" id="deck-a-loop-2" aria-pressed="false" title="2 bars">2</button>
+          <button class="btn out" id="deck-a-loop-4" aria-pressed="false" title="4 bars">4</button>
+          <button class="btn out" id="deck-a-loop-8" aria-pressed="false" title="8 bars">8</button>
+        </div>
+        <div class="dj-row" role="group" aria-label="Deck A hot cues">
+          <span class="lbl">Hot<br>cue</span>
+          <button class="btn out hc" id="deck-a-cue-1" data-set="false" aria-label="Hot cue 1, empty"><span class="ind"></span>1</button>
+          <button class="btn out hc" id="deck-a-cue-2" data-set="false" aria-label="Hot cue 2, empty"><span class="ind"></span>2</button>
+          <button class="btn out hc" id="deck-a-cue-3" data-set="false" aria-label="Hot cue 3, empty"><span class="ind"></span>3</button>
+          <button class="btn out hc" id="deck-a-cue-4" data-set="false" aria-label="Hot cue 4, empty"><span class="ind"></span>4</button>
+        </div>
+        <div class="dj-row fx" role="group" aria-label="Deck A effects">
+          <span class="lbl">FX</span>
+          <button class="btn out" id="deck-a-roll" aria-pressed="false"><span class="ind"></span>Roll</button>
+          <button class="btn out" id="deck-a-echo">Echo out</button>
+          <button class="btn out" id="deck-a-tape">Tape stop</button>
+        </div>
+      </fieldset>
+
+      <fieldset class="group dj-mixer" aria-label="Mixer">
+        <legend>Mixer</legend>
+        <div class="dj-levels" role="group" aria-label="Deck levels">
+          <div class="fader dj-fader">
+            <label for="level-a">Level A</label>
+            <output id="level-a-value" for="level-a">100%</output>
+            <input id="level-a" type="range" min="0" max="100" step="1" value="100">
+          </div>
+          <div class="fader dj-fader">
+            <label for="level-b">Level B</label>
+            <output id="level-b-value" for="level-b">100%</output>
+            <input id="level-b" type="range" min="0" max="100" step="1" value="100">
+          </div>
+        </div>
+        <div class="dj-xfader">
+          <label class="lbl" for="crossfader">Crossfader</label>
+          <span aria-hidden="true">A</span>
+          <input class="range" id="crossfader" type="range" min="-100" max="100" step="1" value="0" aria-valuetext="centre">
+          <span aria-hidden="true">B</span>
+        </div>
+        <div class="dj-auto">
+          <span class="lbl">Auto DJ</span>
+          <button class="btn out" id="auto-dj" aria-pressed="false"><span class="ind"></span>Auto DJ</button>
+          <div class="fld">
+            <label for="auto-style">Style</label>
+            <select class="select in" id="auto-style">
+              <option value="blend">Blend</option>
+              <option value="echo">Echo out</option>
+              <option value="roll">Beat roll</option>
+              <option value="tape">Tape stop</option>
+              <option value="mixed" selected>Mixed</option>
+            </select>
+          </div>
+          <div class="fld">
+            <label for="auto-bars">Bars/song</label>
+            <input class="field in" id="auto-bars" type="number" min="8" max="256" step="4" value="64" inputmode="numeric">
+          </div>
+          <div class="lcd in dj-lcd-s" role="status" aria-live="polite"><span id="auto-status">Off · press Auto DJ to let it mix</span></div>
+        </div>
+      </fieldset>
+
+      <fieldset class="group dj-deck b" id="deck-b" data-state="ready" aria-label="Deck B">
+        <legend>Deck B</legend>
+        <div class="lcd in dj-lcd" aria-hidden="true">
+          <span class="dj-t" id="deck-b-title">Last Train to Y2K</span>
+          <span class="dj-bpm"><span id="deck-b-bpm">126.2</span><small>BPM</small></span>
+          <span class="dj-a" id="deck-b-artist">Nina Vaskova</span>
+          <span class="dj-time" id="deck-b-time">00:00<small>-04:51</small></span>
+          <span class="dj-st" id="deck-b-status">Cued · synced to A</span>
+        </div>
+        <div class="well in dj-wave"><canvas id="deck-b-wave" aria-hidden="true"></canvas></div>
+        <div class="dj-transport" role="group" aria-label="Deck B transport">
+          <button class="btn out" id="deck-b-play" aria-label="Play" aria-pressed="false"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 2l9 5-9 5z"/></svg>Play</button>
+          <button class="btn out" id="deck-b-cue">Cue</button>
+          <button class="btn out" id="deck-b-sync" aria-pressed="false"><span class="ind"></span>Sync</button>
+        </div>
+        <div class="dj-faders" role="group" aria-label="Deck B equaliser and pitch">
+          <div class="fader dj-fader">
+            <label for="deck-b-high">High</label>
+            <output id="deck-b-high-value" for="deck-b-high">0.0 dB</output>
+            <input id="deck-b-high" type="range" min="-24" max="6" step="0.5" value="0" aria-valuetext="0 dB">
+            <button class="btn out" id="deck-b-high-kill" aria-pressed="false">Kill</button>
+          </div>
+          <div class="fader dj-fader">
+            <label for="deck-b-mid">Mid</label>
+            <output id="deck-b-mid-value" for="deck-b-mid">0.0 dB</output>
+            <input id="deck-b-mid" type="range" min="-24" max="6" step="0.5" value="0" aria-valuetext="0 dB">
+            <button class="btn out" id="deck-b-mid-kill" aria-pressed="false">Kill</button>
+          </div>
+          <div class="fader dj-fader">
+            <label for="deck-b-low">Low</label>
+            <output id="deck-b-low-value" for="deck-b-low">0.0 dB</output>
+            <input id="deck-b-low" type="range" min="-24" max="6" step="0.5" value="0" aria-valuetext="0 dB">
+            <button class="btn out" id="deck-b-low-kill" aria-pressed="false">Kill</button>
+          </div>
+          <div class="fader dj-fader pitch">
+            <label for="deck-b-pitch">Pitch</label>
+            <output id="deck-b-pitch-value" for="deck-b-pitch">+0.0%</output>
+            <input id="deck-b-pitch" type="range" min="-8" max="8" step="0.1" value="0" aria-valuetext="0%">
+            <span class="ticks">±8%</span>
+          </div>
+        </div>
+        <div class="dj-filter">
+          <label for="deck-b-filter">LP ◂ Filter</label>
+          <input class="range" id="deck-b-filter" type="range" min="-100" max="100" step="1" value="0" style="--v:50%" aria-valuetext="off">
+          <output id="deck-b-filter-value" for="deck-b-filter">▸ HP</output>
+        </div>
+        <div class="dj-row" role="group" aria-label="Deck B loop">
+          <span class="lbl"><span class="ind"></span>Loop</span>
+          <button class="btn out" id="deck-b-loop-1" aria-pressed="false" title="1 bar">1</button>
+          <button class="btn out" id="deck-b-loop-2" aria-pressed="false" title="2 bars">2</button>
+          <button class="btn out" id="deck-b-loop-4" aria-pressed="false" title="4 bars">4</button>
+          <button class="btn out" id="deck-b-loop-8" aria-pressed="false" title="8 bars">8</button>
+        </div>
+        <div class="dj-row" role="group" aria-label="Deck B hot cues">
+          <span class="lbl">Hot<br>cue</span>
+          <button class="btn out hc" id="deck-b-cue-1" data-set="false" aria-label="Hot cue 1, empty"><span class="ind"></span>1</button>
+          <button class="btn out hc" id="deck-b-cue-2" data-set="false" aria-label="Hot cue 2, empty"><span class="ind"></span>2</button>
+          <button class="btn out hc" id="deck-b-cue-3" data-set="false" aria-label="Hot cue 3, empty"><span class="ind"></span>3</button>
+          <button class="btn out hc" id="deck-b-cue-4" data-set="false" aria-label="Hot cue 4, empty"><span class="ind"></span>4</button>
+        </div>
+        <div class="dj-row fx" role="group" aria-label="Deck B effects">
+          <span class="lbl">FX</span>
+          <button class="btn out" id="deck-b-roll" aria-pressed="false"><span class="ind"></span>Roll</button>
+          <button class="btn out" id="deck-b-echo">Echo out</button>
+          <button class="btn out" id="deck-b-tape">Tape stop</button>
+        </div>
+      </fieldset>
+
+    </div>
+  </fieldset>
+
+  <div class="statusbar">
+    <span class="in" id="status">61 tracks · 4:12:08 total · A: Dial-Up Heart · B: Last Train to Y2K</span>
+    <span class="in" id="status-format">MP3 192 kbps 44.1 kHz</span>
+    <span class="in credit">
+      <svg viewBox="0 0 18 20" aria-hidden="true"><path fill="currentColor" d="M2 2.5h9a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H8v4H6v-4H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1z"/><path fill="currentColor" d="M12.2 3.2l3 1.2v2.8l-3 1.2z"/><rect x="1.5" y="13" width="15" height="6" rx="1" fill="none" stroke="currentColor" stroke-width="1.2"/><text x="9" y="17.8" text-anchor="middle" font-size="4.6" font-weight="700" font-family="system-ui, sans-serif" fill="currentColor">FREE</text></svg>
+      Free, by <a href="https://maksforge.com">MaksForge</a> · local only
+    </span>
+  </div>
+</main>
+
+<section class="states">
+  <h2>Deck states: empty, and analysing a freshly loaded song</h2>
+  <div class="states-grid">
+    <div class="panel out" id="state-empty"></div>
+    <div class="panel out" id="state-analysing"></div>
+  </div>
+
+  <h2>Keyboard focus on a control, and the View menu entry</h2>
+  <div class="states-grid">
+    <div class="panel out" id="state-focus"></div>
+    <div class="panel out" style="display:grid;gap:8px;padding:12px">
+      <div class="menu-panel out menu-demo">
+        <button>DJ mode (advanced)<kbd>✓</kbd></button>
+        <button>Compact mode<kbd></kbd></button>
+        <hr>
+        <button>Spectrum<kbd></kbd></button>
+        <button>Oscilloscope<kbd></kbd></button>
+        <button>Visualiser off<kbd></kbd></button>
+      </div>
+      <small style="color:var(--ink-dim)">The existing right-hand &lt;kbd&gt; slot shows the check; no new CSS.</small>
+    </div>
+  </div>
+</section>
+
+<script>
+  const skin = new URLSearchParams(location.search).get('skin');
+  if (skin) document.documentElement.dataset.skin = skin;
+  document.querySelectorAll('[data-skin-choice]').forEach((b) => {
+    b.setAttribute('aria-pressed', String(b.dataset.skinChoice === document.documentElement.dataset.skin));
+    b.addEventListener('click', () => { location.search = '?skin=' + b.dataset.skinChoice; });
+  });
+  const cs = getComputedStyle(document.documentElement);
+  const tok = (n) => cs.getPropertyValue(n).trim();
+
+  const viz = document.getElementById('viz'); const vctx = viz.getContext('2d'); viz.width = 500; viz.height = 130;
+  for (let i = 0; i < 28; i++) { const h = 20 + Math.round(90 * Math.abs(Math.sin(i * 1.7))); for (let y = 0; y < h; y += 5) { vctx.fillStyle = y > h - 10 ? tok('--viz') : tok('--viz-2'); vctx.fillRect(8 + i * 17, 118 - y, 12, 3); } }
+
+  function drawWave(canvas, { progress, seed, loop, cues }) {
+    const dpr = devicePixelRatio || 1;
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
+    const ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
+    ctx.fillStyle = tok('--well'); ctx.fillRect(0, 0, w, h);
+    const mid = h / 2 + 3, px = Math.round(w * progress);
+    let s = seed;
+    const rnd = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
+    const cols = Math.floor(w / 3);
+    for (let i = 0; i < cols; i++) {
+      const x = i * 3, t = i / cols;
+      const env = 0.35 + 0.65 * Math.abs(Math.sin(t * 9.2 + seed)) * (0.6 + 0.4 * Math.sin(t * 41));
+      const a = Math.max(2, Math.round((h / 2 - 8) * env * (0.55 + 0.45 * rnd())));
+      ctx.fillStyle = x < px ? tok('--viz') : tok('--viz-2');
+      ctx.fillRect(x, mid - a, 2, a * 2);
+    }
+    if (loop) { ctx.fillStyle = tok('--viz'); ctx.globalAlpha = .18; ctx.fillRect(w * loop[0], 0, w * (loop[1] - loop[0]), h); ctx.globalAlpha = 1; ctx.fillRect(w * loop[0], 0, 1, h); ctx.fillRect(w * loop[1] - 1, 0, 1, h); }
+    const beat = w / 64;
+    for (let b = 0; b * beat < w; b++) { const down = b % 4 === 0; ctx.fillStyle = down ? tok('--well-ink') : tok('--well-dim'); ctx.fillRect(Math.round(b * beat), 0, 1, down ? 7 : 4); }
+    (cues || []).forEach(([pos, n]) => { const x = Math.round(w * pos); ctx.fillStyle = tok('--viz'); ctx.fillRect(x, 0, 2, h); ctx.fillRect(x, 0, 9, 9); ctx.fillStyle = tok('--well'); ctx.font = '700 8px ' + tok('--font-mono'); ctx.fillText(String(n), x + 2, 7.5); });
+    ctx.fillStyle = tok('--well-ink'); ctx.fillRect(px - 1, 0, 2, h);
+    ctx.beginPath(); ctx.moveTo(px - 5, 0); ctx.lineTo(px + 5, 0); ctx.lineTo(px, 5); ctx.closePath(); ctx.fill();
+  }
+  const waves = [
+    [document.getElementById('deck-a-wave'), { progress: .3, seed: 7, loop: [.3, .36], cues: [[.12, 1], [.47, 2]] }],
+    [document.getElementById('deck-b-wave'), { progress: 0, seed: 3, cues: [[.1, 1]] }],
+  ];
+  const draw = () => waves.forEach(([c, o]) => drawWave(c, o));
+  draw(); addEventListener('resize', draw);
+
+  const set = (id, attr, v) => document.getElementById(id).setAttribute(attr, v);
+  set('deck-a-play', 'aria-pressed', 'true'); set('deck-a-play', 'aria-label', 'Pause');
+  document.querySelector('#deck-a-play path').setAttribute('d', 'M3 2h3v10H3zM8 2h3v10H8z');
+  set('deck-a-loop-4', 'aria-pressed', 'true');
+  set('deck-a-cue-1', 'data-set', 'true'); set('deck-a-cue-1', 'aria-label', 'Hot cue 1, 0:32');
+  set('deck-a-cue-2', 'data-set', 'true'); set('deck-a-cue-2', 'aria-label', 'Hot cue 2, 2:05');
+  set('deck-b-sync', 'aria-pressed', 'true');
+  set('deck-b-cue-1', 'data-set', 'true'); set('deck-b-cue-1', 'aria-label', 'Hot cue 1, 0:29');
+  set('deck-b-low-kill', 'aria-pressed', 'true');
+  document.getElementById('deck-b-low').value = -24; document.getElementById('deck-b-low-value').value = '-24 dB';
+  document.getElementById('deck-b-pitch').value = 1.4; document.getElementById('deck-b-pitch-value').value = '+1.4%';
+  document.getElementById('deck-a-high').value = 2; document.getElementById('deck-a-high-value').value = '+2.0 dB';
+  const fa = document.getElementById('deck-b-filter'); fa.value = -35; fa.style.setProperty('--v', '32.5%'); document.getElementById('deck-b-filter-value').value = '▸ HP';
+  const xf = document.getElementById('crossfader'); xf.value = -70;
+  const lb = document.getElementById('level-b'); lb.value = 85; document.getElementById('level-b-value').value = '85%';
+  set('auto-dj', 'aria-pressed', 'true');
+  document.getElementById('auto-status').textContent = 'A plays · B cued, synced · echo out to B in 24 bars';
+
+  function cloneDeck(target, prefix, state, texts) {
+    const deck = document.getElementById('deck-a').cloneNode(true);
+    deck.id = prefix; deck.dataset.state = state; deck.className = 'group dj-deck';
+    deck.querySelectorAll('[id]').forEach((el) => { el.id = el.id.replace('deck-a-', prefix + '-'); });
+    deck.querySelectorAll('[for]').forEach((el) => { el.setAttribute('for', el.getAttribute('for').replace('deck-a-', prefix + '-')); });
+    deck.querySelector('legend').textContent = texts.legend;
+    deck.querySelector('.dj-t').textContent = texts.title; deck.querySelector('.dj-a').textContent = texts.artist;
+    deck.querySelector('.dj-bpm span').textContent = texts.bpm; deck.querySelector('.dj-time').innerHTML = texts.time;
+    deck.querySelector('.dj-st').textContent = texts.status;
+    deck.querySelectorAll('button, input, select').forEach((el) => { el.disabled = true; el.setAttribute('aria-pressed', el.hasAttribute('aria-pressed') ? 'false' : null); if (!el.hasAttribute('aria-pressed')) el.removeAttribute('aria-pressed'); });
+    deck.querySelectorAll('.hc').forEach((b, i) => { b.dataset.set = 'false'; b.setAttribute('aria-label', `Hot cue ${i + 1}, empty`); });
+    deck.querySelector('.dj-transport .btn').setAttribute('aria-label', 'Play');
+    deck.querySelector('.dj-transport path').setAttribute('d', 'M3 2l9 5-9 5z');
+    deck.querySelectorAll('output').forEach((o) => { o.value = o.id.includes('pitch') ? '+0.0%' : o.id.includes('filter') ? '▸ HP' : '0.0 dB'; });
+    deck.querySelectorAll('input[type=range]').forEach((r) => { r.value = 0; });
+    document.getElementById(target).append(deck);
+  }
+  cloneDeck('state-empty', 'demo-empty', 'empty', { legend: 'Deck B · empty', title: 'No track', artist: 'Press B in a playlist row', bpm: '---.-', time: '--:--<small>--:--</small>', status: 'Empty' });
+  cloneDeck('state-analysing', 'demo-an', 'analysing', { legend: 'Deck B · analysing', title: 'Floppy Disk Blues', artist: 'Dial Tone Riot', bpm: '···', time: '00:00<small>-02:49</small>', status: 'Finding the beat…' });
+  const f = document.getElementById('deck-b').cloneNode(true); f.id = 'demo-focus'; f.className = 'group dj-deck';
+  f.querySelectorAll('[id]').forEach((el) => { el.id = el.id.replace('deck-b-', 'demo-focus-'); });
+  f.querySelectorAll('[for]').forEach((el) => { el.setAttribute('for', el.getAttribute('for').replace('deck-b-', 'demo-focus-')); });
+  f.querySelector('legend').textContent = 'Deck B · focus on Sync';
+  f.querySelector('.dj-transport .btn:last-child').classList.add('focus-demo');
+  document.getElementById('state-focus').append(f);
+  drawWave(f.querySelector('canvas'), { progress: 0, seed: 3, cues: [[.1, 1]] });
+</script>
+</body>
+</html>

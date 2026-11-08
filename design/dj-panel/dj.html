@@ -1,0 +1,221 @@
+<!--
+DJ mode: markup to insert into index.html.
+
+1. The panel. Goes inside <main class="app out" id="app">, directly after the closing </div> of
+   <div class="work"> and before <div class="statusbar">. It is display:none until JS adds the class
+   dj-on to #app (View > "DJ mode (advanced)"); hide-compact hides it in compact mode as well.
+
+   Per-deck state lives on the deck fieldset: data-state="empty" | "analysing" | "ready".
+   JS writes the LCD texts (#deck-a-title, -artist, -bpm, -time, -status), draws #deck-a-wave,
+   toggles aria-pressed on play / sync / loop-N / roll / auto-dj, sets data-set="true|false" on the
+   hot cues (and their aria-label, e.g. "Hot cue 1, 0:32"), style="--v:NN%" on the filter so the
+   track fills from the centre, and the disabled attribute on every control of an empty or
+   analysing deck. #deck-a-time may hold plain text ("01:23 -02:10") or the <small> for remaining.
+   The value readouts are <output> elements with ids <prefix>-pitch-value, -high-value, -mid-value,
+   -low-value, -filter-value, and level-a-value / level-b-value in the mixer.
+-->
+<fieldset class="group dj hide-compact" id="dj-panel">
+  <legend>DJ mode</legend>
+  <div class="dj-grid">
+
+    <fieldset class="group dj-deck a" id="deck-a" data-state="ready" aria-label="Deck A">
+      <legend>Deck A</legend>
+      <div class="lcd in dj-lcd" aria-hidden="true">
+        <span class="dj-t" id="deck-a-title">Dial-Up Heart</span>
+        <span class="dj-bpm"><span id="deck-a-bpm">128.0</span><small>BPM</small></span>
+        <span class="dj-a" id="deck-a-artist">The Velvet Modems</span>
+        <span class="dj-time" id="deck-a-time">01:23<small>-03:10</small></span>
+        <span class="dj-st" id="deck-a-status">Playing · master</span>
+      </div>
+      <div class="well in dj-wave"><canvas id="deck-a-wave" aria-hidden="true"></canvas></div>
+      <div class="dj-transport" role="group" aria-label="Deck A transport">
+        <button class="btn out" id="deck-a-play" aria-label="Play" aria-pressed="false"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 2l9 5-9 5z"/></svg>Play</button>
+        <button class="btn out" id="deck-a-cue">Cue</button>
+        <button class="btn out" id="deck-a-sync" aria-pressed="false"><span class="ind"></span>Sync</button>
+      </div>
+      <div class="dj-faders" role="group" aria-label="Deck A equaliser and pitch">
+        <div class="fader dj-fader">
+          <label for="deck-a-high">High</label>
+          <output id="deck-a-high-value" for="deck-a-high">0.0 dB</output>
+          <input id="deck-a-high" type="range" min="-24" max="6" step="0.5" value="0" aria-valuetext="0 dB">
+          <button class="btn out" id="deck-a-high-kill" aria-pressed="false">Kill</button>
+        </div>
+        <div class="fader dj-fader">
+          <label for="deck-a-mid">Mid</label>
+          <output id="deck-a-mid-value" for="deck-a-mid">0.0 dB</output>
+          <input id="deck-a-mid" type="range" min="-24" max="6" step="0.5" value="0" aria-valuetext="0 dB">
+          <button class="btn out" id="deck-a-mid-kill" aria-pressed="false">Kill</button>
+        </div>
+        <div class="fader dj-fader">
+          <label for="deck-a-low">Low</label>
+          <output id="deck-a-low-value" for="deck-a-low">0.0 dB</output>
+          <input id="deck-a-low" type="range" min="-24" max="6" step="0.5" value="0" aria-valuetext="0 dB">
+          <button class="btn out" id="deck-a-low-kill" aria-pressed="false">Kill</button>
+        </div>
+        <div class="fader dj-fader pitch">
+          <label for="deck-a-pitch">Pitch</label>
+          <output id="deck-a-pitch-value" for="deck-a-pitch">+0.0%</output>
+          <input id="deck-a-pitch" type="range" min="-8" max="8" step="0.1" value="0" aria-valuetext="0%">
+          <span class="ticks">±8%</span>
+        </div>
+      </div>
+      <div class="dj-filter">
+        <label for="deck-a-filter">LP ◂ Filter</label>
+        <input class="range" id="deck-a-filter" type="range" min="-100" max="100" step="1" value="0" style="--v:50%" aria-valuetext="off">
+        <output id="deck-a-filter-value" for="deck-a-filter">▸ HP</output>
+      </div>
+      <div class="dj-row" role="group" aria-label="Deck A loop">
+        <span class="lbl"><span class="ind"></span>Loop</span>
+        <button class="btn out" id="deck-a-loop-1" aria-pressed="false" title="1 bar">1</button>
+        <button class="btn out" id="deck-a-loop-2" aria-pressed="false" title="2 bars">2</button>
+        <button class="btn out" id="deck-a-loop-4" aria-pressed="false" title="4 bars">4</button>
+        <button class="btn out" id="deck-a-loop-8" aria-pressed="false" title="8 bars">8</button>
+      </div>
+      <div class="dj-row" role="group" aria-label="Deck A hot cues">
+        <span class="lbl">Hot<br>cue</span>
+        <button class="btn out hc" id="deck-a-cue-1" data-set="false" aria-label="Hot cue 1, empty"><span class="ind"></span>1</button>
+        <button class="btn out hc" id="deck-a-cue-2" data-set="false" aria-label="Hot cue 2, empty"><span class="ind"></span>2</button>
+        <button class="btn out hc" id="deck-a-cue-3" data-set="false" aria-label="Hot cue 3, empty"><span class="ind"></span>3</button>
+        <button class="btn out hc" id="deck-a-cue-4" data-set="false" aria-label="Hot cue 4, empty"><span class="ind"></span>4</button>
+      </div>
+      <div class="dj-row fx" role="group" aria-label="Deck A effects">
+        <span class="lbl">FX</span>
+        <button class="btn out" id="deck-a-roll" aria-pressed="false"><span class="ind"></span>Roll</button>
+        <button class="btn out" id="deck-a-echo">Echo out</button>
+        <button class="btn out" id="deck-a-tape">Tape stop</button>
+      </div>
+    </fieldset>
+
+    <fieldset class="group dj-mixer" aria-label="Mixer">
+      <legend>Mixer</legend>
+      <div class="dj-levels" role="group" aria-label="Deck levels">
+        <div class="fader dj-fader">
+          <label for="level-a">Level A</label>
+          <output id="level-a-value" for="level-a">100%</output>
+          <input id="level-a" type="range" min="0" max="100" step="1" value="100">
+        </div>
+        <div class="fader dj-fader">
+          <label for="level-b">Level B</label>
+          <output id="level-b-value" for="level-b">100%</output>
+          <input id="level-b" type="range" min="0" max="100" step="1" value="100">
+        </div>
+      </div>
+      <div class="dj-xfader">
+        <label class="lbl" for="crossfader">Crossfader</label>
+        <span aria-hidden="true">A</span>
+        <input class="range" id="crossfader" type="range" min="-100" max="100" step="1" value="0" aria-valuetext="centre">
+        <span aria-hidden="true">B</span>
+      </div>
+      <div class="dj-auto">
+        <span class="lbl">Auto DJ</span>
+        <button class="btn out" id="auto-dj" aria-pressed="false"><span class="ind"></span>Auto DJ</button>
+        <div class="fld">
+          <label for="auto-style">Style</label>
+          <select class="select in" id="auto-style">
+            <option value="blend">Blend</option>
+            <option value="echo">Echo out</option>
+            <option value="roll">Beat roll</option>
+            <option value="tape">Tape stop</option>
+            <option value="mixed" selected>Mixed</option>
+          </select>
+        </div>
+        <div class="fld">
+          <label for="auto-bars">Bars/song</label>
+          <input class="field in" id="auto-bars" type="number" min="8" max="256" step="4" value="64" inputmode="numeric">
+        </div>
+        <div class="lcd in dj-lcd-s" role="status" aria-live="polite"><span id="auto-status">Off · press Auto DJ to let it mix</span></div>
+      </div>
+    </fieldset>
+
+    <fieldset class="group dj-deck b" id="deck-b" data-state="ready" aria-label="Deck B">
+      <legend>Deck B</legend>
+      <div class="lcd in dj-lcd" aria-hidden="true">
+        <span class="dj-t" id="deck-b-title">Last Train to Y2K</span>
+        <span class="dj-bpm"><span id="deck-b-bpm">126.2</span><small>BPM</small></span>
+        <span class="dj-a" id="deck-b-artist">Nina Vaskova</span>
+        <span class="dj-time" id="deck-b-time">00:00<small>-04:51</small></span>
+        <span class="dj-st" id="deck-b-status">Cued · synced to A</span>
+      </div>
+      <div class="well in dj-wave"><canvas id="deck-b-wave" aria-hidden="true"></canvas></div>
+      <div class="dj-transport" role="group" aria-label="Deck B transport">
+        <button class="btn out" id="deck-b-play" aria-label="Play" aria-pressed="false"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 2l9 5-9 5z"/></svg>Play</button>
+        <button class="btn out" id="deck-b-cue">Cue</button>
+        <button class="btn out" id="deck-b-sync" aria-pressed="false"><span class="ind"></span>Sync</button>
+      </div>
+      <div class="dj-faders" role="group" aria-label="Deck B equaliser and pitch">
+        <div class="fader dj-fader">
+          <label for="deck-b-high">High</label>
+          <output id="deck-b-high-value" for="deck-b-high">0.0 dB</output>
+          <input id="deck-b-high" type="range" min="-24" max="6" step="0.5" value="0" aria-valuetext="0 dB">
+          <button class="btn out" id="deck-b-high-kill" aria-pressed="false">Kill</button>
+        </div>
+        <div class="fader dj-fader">
+          <label for="deck-b-mid">Mid</label>
+          <output id="deck-b-mid-value" for="deck-b-mid">0.0 dB</output>
+          <input id="deck-b-mid" type="range" min="-24" max="6" step="0.5" value="0" aria-valuetext="0 dB">
+          <button class="btn out" id="deck-b-mid-kill" aria-pressed="false">Kill</button>
+        </div>
+        <div class="fader dj-fader">
+          <label for="deck-b-low">Low</label>
+          <output id="deck-b-low-value" for="deck-b-low">0.0 dB</output>
+          <input id="deck-b-low" type="range" min="-24" max="6" step="0.5" value="0" aria-valuetext="0 dB">
+          <button class="btn out" id="deck-b-low-kill" aria-pressed="false">Kill</button>
+        </div>
+        <div class="fader dj-fader pitch">
+          <label for="deck-b-pitch">Pitch</label>
+          <output id="deck-b-pitch-value" for="deck-b-pitch">+0.0%</output>
+          <input id="deck-b-pitch" type="range" min="-8" max="8" step="0.1" value="0" aria-valuetext="0%">
+          <span class="ticks">±8%</span>
+        </div>
+      </div>
+      <div class="dj-filter">
+        <label for="deck-b-filter">LP ◂ Filter</label>
+        <input class="range" id="deck-b-filter" type="range" min="-100" max="100" step="1" value="0" style="--v:50%" aria-valuetext="off">
+        <output id="deck-b-filter-value" for="deck-b-filter">▸ HP</output>
+      </div>
+      <div class="dj-row" role="group" aria-label="Deck B loop">
+        <span class="lbl"><span class="ind"></span>Loop</span>
+        <button class="btn out" id="deck-b-loop-1" aria-pressed="false" title="1 bar">1</button>
+        <button class="btn out" id="deck-b-loop-2" aria-pressed="false" title="2 bars">2</button>
+        <button class="btn out" id="deck-b-loop-4" aria-pressed="false" title="4 bars">4</button>
+        <button class="btn out" id="deck-b-loop-8" aria-pressed="false" title="8 bars">8</button>
+      </div>
+      <div class="dj-row" role="group" aria-label="Deck B hot cues">
+        <span class="lbl">Hot<br>cue</span>
+        <button class="btn out hc" id="deck-b-cue-1" data-set="false" aria-label="Hot cue 1, empty"><span class="ind"></span>1</button>
+        <button class="btn out hc" id="deck-b-cue-2" data-set="false" aria-label="Hot cue 2, empty"><span class="ind"></span>2</button>
+        <button class="btn out hc" id="deck-b-cue-3" data-set="false" aria-label="Hot cue 3, empty"><span class="ind"></span>3</button>
+        <button class="btn out hc" id="deck-b-cue-4" data-set="false" aria-label="Hot cue 4, empty"><span class="ind"></span>4</button>
+      </div>
+      <div class="dj-row fx" role="group" aria-label="Deck B effects">
+        <span class="lbl">FX</span>
+        <button class="btn out" id="deck-b-roll" aria-pressed="false"><span class="ind"></span>Roll</button>
+        <button class="btn out" id="deck-b-echo">Echo out</button>
+        <button class="btn out" id="deck-b-tape">Tape stop</button>
+      </div>
+    </fieldset>
+
+  </div>
+</fieldset>
+
+<!--
+2. Playlist table. In the static header, insert the "Deck" cell between the Time header and the
+   trailing empty span:
+
+   <div class="thead"><span></span><span class="h-no">#</span><span>Title</span><span class="h-art">Artist</span><span class="h-fmt">Fmt</span><span>Time</span><span class="h-load">Deck</span><span></span></div>
+
+   In buildRow() (src/app.js), append this cell after cell('dur', …) and before the remove button.
+   The buttons keep tabindex -1 like .rm (the row itself is the keyboard stop; suggest the keys
+   A and B load the selected row). JS sets aria-pressed="true" on the button of the row whose
+   track is on that deck, so the list shows where each deck's song came from.
+-->
+<span class="load">
+  <button class="ld out" type="button" data-deck="a" tabindex="-1" aria-pressed="false" aria-label="Load Chrome Horizon to deck A">A</button>
+  <button class="ld out" type="button" data-deck="b" tabindex="-1" aria-pressed="false" aria-label="Load Chrome Horizon to deck B">B</button>
+</span>
+
+<!--
+3. Menu. In menuItems() under View, before "Compact mode":
+   ['DJ mode (advanced)', () => setDjMode(!settings.dj)]
+   The menu-panel already renders a right-hand <kbd>; render "✓" there when it is on, so no new CSS.
+-->

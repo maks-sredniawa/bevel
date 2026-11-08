@@ -1,0 +1,59 @@
+<!--
+Playlist switcher: markup to insert into index.html.
+
+1. Switcher block. Goes inside <fieldset class="group playlist">, directly after
+   <legend>Playlist</legend> and before <div class="pl-top">.
+   JS fills #playlist-tabs with one .pl-tab button per playlist (template below).
+-->
+<div class="pl-sets">
+  <div class="in pl-tabs" id="playlist-tabs" role="group" aria-label="Playlists">
+    <!-- inactive entry -->
+    <button class="pl-tab" type="button" data-id="cd01" aria-pressed="false"><span class="ind"></span><span class="name">CD01</span><span class="count">48<span class="sr-only"> tracks</span></span></button>
+    <!-- active entry -->
+    <button class="pl-tab" type="button" data-id="cd02" aria-pressed="true"><span class="ind"></span><span class="name">CD02_Rock_Metal</span><span class="count">61<span class="sr-only"> tracks</span></span></button>
+  </div>
+  <div class="pl-set-btns">
+    <button class="btn out" id="playlist-new">New…</button>
+    <button class="btn out" id="playlist-rename">Rename…</button>
+    <button class="btn out" id="playlist-delete">Delete…</button>
+  </div>
+</div>
+
+<!--
+2. Dialogs. Go after <dialog class="out" id="help">…</dialog>, before the <script>.
+   #name-dialog serves both "New playlist" and "Rename playlist": JS sets #name-title's text,
+   #name-input's value, and the submit button's label. Submit value is "ok"; Cancel's is "cancel".
+   #delete-dialog: JS writes the full sentence into #delete-message, e.g.
+   Delete "CD06_Wife" and its 36 stored songs? This frees the space they take in this browser and cannot be undone.
+   Cancel is the default button (focused on open) so Enter never deletes.
+-->
+<dialog class="out dlg" id="name-dialog" aria-labelledby="name-title">
+  <div class="titlebar"><span class="t" id="name-title">Rename playlist</span></div>
+  <div class="body">
+    <form method="dialog">
+      <label class="lbl" for="name-input">Name</label>
+      <input class="field in" id="name-input" type="text" autocomplete="off" spellcheck="false" maxlength="80" required>
+      <span class="hint" id="name-hint">Shown in the list and in the window title. The songs are kept.</span>
+      <div class="dlg-btns">
+        <button class="btn out" value="cancel" formnovalidate>Cancel</button>
+        <button class="btn out default" value="ok" id="name-ok">OK</button>
+      </div>
+    </form>
+  </div>
+</dialog>
+
+<dialog class="out dlg" id="delete-dialog" aria-labelledby="delete-title" aria-describedby="delete-message">
+  <div class="titlebar"><span class="t" id="delete-title">Delete playlist</span></div>
+  <div class="body">
+    <form method="dialog">
+      <div class="warn">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3 30 28H2z" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/><path d="M16 11v9" stroke="currentColor" stroke-width="3"/><circle cx="16" cy="24" r="1.8" fill="currentColor"/></svg>
+        <p id="delete-message">Delete "CD06_Wife" and its 36 stored songs? This frees the space they take in this browser and cannot be undone.</p>
+      </div>
+      <div class="dlg-btns">
+        <button class="btn out default" value="cancel" autofocus>Cancel</button>
+        <button class="btn out" value="ok" id="delete-ok">Delete</button>
+      </div>
+    </form>
+  </div>
+</dialog>

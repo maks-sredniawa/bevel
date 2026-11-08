@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="en" data-skin="oatmeal">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Direction C — Pixel workstation</title>
+<style>
+:root {
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", "Liberation Mono", monospace;
+  --font-ui: system-ui, "Segoe UI", Roboto, "Noto Sans", "Liberation Sans", sans-serif;
+}
+:root[data-skin="oatmeal"] {
+  --desk-a: #4f6b63; --desk-b: #46605a;
+  --face: #d2ccbc; --face-2: #c4bda9; --hi: #ffffff; --lo: #7d766a; --dark: #2b2821;
+  --ink: #1d1a14; --ink-dim: #5f594d;
+  --title-1: #2b3a6b; --title-2: #4c5f9e; --title-ink: #ffffff;
+  --sel: #2b3a6b; --sel-ink: #ffffff;
+  --lcd: #9fb58c; --lcd-2: #8fa67c; --lcd-ink: #182414; --lcd-ghost: rgba(24,36,20,.14);
+  --well: #0f120e; --well-ink: #cfe6b8; --well-dim: #5f7a4c; --viz: #9fe071; --viz-2: #4f8f3a;
+  --focus: #e0471e; --on: #3a9a2f;
+}
+:root[data-skin="nightshift"] {
+  --desk-a: #15161a; --desk-b: #1b1c21;
+  --face: #35383f; --face-2: #2c2f35; --hi: #656a74; --lo: #15171b; --dark: #000000;
+  --ink: #ececec; --ink-dim: #a6aab3;
+  --title-1: #7a4a10; --title-2: #b8741f; --title-ink: #fff4e0;
+  --sel: #c47d1a; --sel-ink: #1a1000;
+  --lcd: #1c1407; --lcd-2: #140e04; --lcd-ink: #f2a93a; --lcd-ghost: rgba(242,169,58,.13);
+  --well: #0a0806; --well-ink: #f2d8a8; --well-dim: #6f5425; --viz: #f2a93a; --viz-2: #8c5a12;
+  --focus: #6ecbff; --on: #f2a93a;
+}
+:root[data-skin="cobalt"] {
+  --desk-a: #243a62; --desk-b: #1f3458;
+  --face: #b4c1d4; --face-2: #a3b2c8; --hi: #eef3fa; --lo: #5a6c86; --dark: #1b2435;
+  --ink: #0f1826; --ink-dim: #45546b;
+  --title-1: #0f2a5e; --title-2: #2a4f93; --title-ink: #ffffff;
+  --sel: #0f2a5e; --sel-ink: #ffffff;
+  --lcd: #cfe0ec; --lcd-2: #bdd1e0; --lcd-ink: #0d2640; --lcd-ghost: rgba(13,38,64,.14);
+  --well: #0b1322; --well-ink: #d8e8ff; --well-dim: #4a6388; --viz: #8ac4ff; --viz-2: #2f6fbd;
+  --focus: #ff6a00; --on: #2fa84f;
+}
+
+* { box-sizing: border-box; }
+html { background: var(--desk-b); }
+body {
+  margin: 0; padding: 24px 16px 40px;
+  font-family: var(--font-mono); font-size: 13px; line-height: 1.3; color: var(--ink);
+  background: repeating-conic-gradient(var(--desk-a) 0 25%, var(--desk-b) 0 50%) 0 0 / 4px 4px;
+  min-height: 100vh;
+}
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px dotted var(--focus); outline-offset: -4px; box-shadow: 0 0 0 2px var(--focus); }
+svg { display: block; shape-rendering: crispEdges; }
+
+.out { border: 2px solid; border-color: var(--hi) var(--dark) var(--dark) var(--hi); box-shadow: inset -1px -1px 0 var(--lo), inset 1px 1px 0 var(--face-2); }
+.in { border: 2px solid; border-color: var(--lo) var(--hi) var(--hi) var(--lo); box-shadow: inset 1px 1px 0 var(--dark); }
+
+.app { max-width: 1080px; margin: 0 auto; background: var(--face); padding: 3px; }
+.titlebar {
+  display: flex; align-items: center; gap: 8px; padding: 4px 6px; color: var(--title-ink);
+  background: linear-gradient(90deg, var(--title-1), var(--title-2));
+  font-weight: 700;
+}
+.titlebar .ico { width: 16px; height: 16px; }
+.titlebar .t { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.titlebar .wb { width: 20px; height: 18px; display: grid; place-items: center; background: var(--face); color: var(--ink); border: 0; padding: 0; }
+.titlebar .wb svg { width: 10px; height: 10px; }
+.menubar { display: flex; gap: 2px; padding: 3px 2px; border-bottom: 1px solid var(--lo); flex-wrap: wrap; }
+.menubar button { background: transparent; border: 1px solid transparent; padding: 4px 9px; min-height: 30px; }
+.menubar button:hover { border-color: var(--hi) var(--lo) var(--lo) var(--hi); }
+.menubar u { text-decoration: underline; text-underline-offset: 2px; }
+
+.work { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px 8px 8px; }
+.col { display: grid; gap: 10px; align-content: start; min-width: 0; }
+
+.group { position: relative; padding: 16px 10px 10px; border: 2px groove var(--hi); margin-top: 8px; }
+.group > legend, .group > .legend { position: absolute; top: -9px; left: 10px; padding: 0 5px; background: var(--face); font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  min-height: 40px; min-width: 40px; padding: 0 12px; background: var(--face); color: var(--ink); font-weight: 700;
+}
+.btn:active, .btn[aria-pressed="true"] { border-color: var(--dark) var(--hi) var(--hi) var(--dark); box-shadow: inset 1px 1px 0 var(--lo); background: var(--face-2); }
+.btn svg { width: 14px; height: 14px; fill: currentColor; }
+.btn .ind { width: 10px; height: 10px; border: 1px solid var(--dark); background: var(--face-2); box-shadow: inset 1px 1px 0 var(--lo); }
+.btn[aria-pressed="true"] .ind { background: var(--on); box-shadow: none; }
+
+/* ---- Display ---- */
+.lcd {
+  position: relative; padding: 10px 12px; color: var(--lcd-ink);
+  background: linear-gradient(180deg, var(--lcd), var(--lcd-2));
+  display: grid; gap: 6px;
+}
+.lcd::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, var(--lcd-ghost) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, var(--lcd-ghost) 0 1px, transparent 1px 3px); opacity: .45; }
+.lcd .flags { display: flex; gap: 10px; font-size: 11px; font-weight: 700; }
+.lcd .flags span { opacity: .3; }
+.lcd .flags span.on { opacity: 1; }
+.lcd .flags .trackno { margin-left: auto; opacity: 1; }
+.lcd .title { overflow: hidden; white-space: nowrap; font-size: 18px; font-weight: 700; letter-spacing: .06em; }
+.lcd .title .marquee { display: inline-block; padding-left: 100%; animation: marquee 14s steps(70) infinite -5s; }
+@keyframes marquee { to { transform: translateX(-100%); } }
+.lcd .big { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.lcd .time { font-size: 40px; font-weight: 700; line-height: 1; letter-spacing: .04em; font-variant-numeric: tabular-nums; }
+.lcd .time small { font-size: 14px; letter-spacing: .02em; margin-left: 8px; }
+.lcd .fmt { font-size: 11px; font-weight: 700; text-align: right; line-height: 1.5; }
+.seekrow { display: grid; grid-template-columns: 1fr; gap: 6px; margin-top: 10px; }
+.slider { position: relative; height: 20px; background: var(--face-2); }
+.slider .ticks { position: absolute; inset: 0; background: repeating-linear-gradient(90deg, var(--lo) 0 1px, transparent 1px 10%); opacity: .6; }
+.slider .fill { position: absolute; left: 2px; top: 2px; bottom: 2px; width: var(--v); background: var(--sel); }
+.slider .thumb { position: absolute; top: -4px; left: var(--v); translate: -50%; width: 14px; height: 28px; background: var(--face); }
+.transport { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.transport .btn { flex: 1; min-height: 44px; }
+.volrow { display: grid; grid-template-columns: auto 1fr auto auto; gap: 10px; align-items: center; margin-top: 10px; }
+.volrow .slider { height: 16px; }
+.volrow .slider .thumb { height: 24px; }
+
+/* ---- Visualiser ---- */
+.well { background: var(--well); color: var(--well-ink); }
+.viz .well { position: relative; }
+.viz canvas { width: 100%; height: 130px; display: block; }
+.viz .axis { position: absolute; left: 6px; right: 6px; bottom: 2px; display: flex; justify-content: space-between; font-size: 10px; color: var(--well-dim); }
+.radios { display: flex; gap: 14px; margin-bottom: 8px; flex-wrap: wrap; }
+.radios label { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; cursor: pointer; }
+.radios input { appearance: none; width: 14px; height: 14px; margin: 0; border-radius: 50%; border: 2px solid; border-color: var(--lo) var(--hi) var(--hi) var(--lo); background: var(--hi); position: relative; }
+.radios input:checked::after { content: ""; position: absolute; inset: 2px; border-radius: 50%; background: var(--ink); }
+
+/* ---- EQ ---- */
+.eq-top { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; margin-bottom: 10px; }
+.check { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; font-weight: 700; cursor: pointer; }
+.check input { appearance: none; width: 16px; height: 16px; margin: 0; border: 2px solid; border-color: var(--lo) var(--hi) var(--hi) var(--lo); background: var(--hi); position: relative; }
+.check input:checked::after { content: ""; position: absolute; left: 4px; top: 1px; width: 4px; height: 8px; border: solid var(--ink); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.select { min-height: 40px; padding: 0 28px 0 8px; background: var(--hi) url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8"><path d="M1 2h6L4 6z" fill="%23222"/></svg>') no-repeat right 6px center / 10px; appearance: none; color: #111; font-weight: 700; }
+.faders { display: grid; grid-template-columns: repeat(11, minmax(0, 1fr)); gap: 3px; }
+.fader { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr auto; justify-items: center; gap: 4px; min-width: 0; font-size: 10px; font-weight: 700; }
+.fader .track { max-width: 100%; min-width: 0; }
+.fader .track { position: relative; width: 100%; height: 110px; padding: 0; background: none; border: 0; display: grid; justify-items: center; }
+.fader .track::before { content: ""; width: 8px; height: 100%; background: var(--face-2); border: 2px solid; border-color: var(--lo) var(--hi) var(--hi) var(--lo); }
+.fader .track::after { content: ""; position: absolute; left: 50%; top: calc((1 - var(--v)) * 100%); translate: -50% -50%; width: 20px; height: 10px; background: var(--face); border: 2px solid; border-color: var(--hi) var(--dark) var(--dark) var(--hi); }
+.fader .track i { position: absolute; left: 50%; top: 50%; width: 14px; height: 1px; translate: -50%; background: var(--lo); }
+.fader.preamp { padding-right: 6px; border-right: 1px solid var(--lo); margin-right: 3px; }
+.fader small { color: var(--ink-dim); font-size: 10px; }
+
+/* ---- Playlist ---- */
+.pl-top { display: grid; grid-template-columns: 1fr; gap: 6px; margin-bottom: 8px; }
+.field { min-height: 40px; padding: 0 8px; background: var(--hi); color: #111; width: 100%; }
+.field::placeholder { color: #666; }
+.pl-btns { display: flex; gap: 4px; flex-wrap: wrap; }
+.pl-btns .btn { min-height: 36px; padding: 0 9px; font-weight: 700; }
+.table { background: var(--hi); color: #111; }
+:root[data-skin="nightshift"] .table { background: #1d1f24; color: var(--ink); }
+.thead, .row { display: grid; grid-template-columns: 22px 40px 3fr 2fr 48px 58px 34px; gap: 6px; align-items: center; }
+.thead > span { padding: 4px 6px; background: var(--face); font-weight: 700; border: 2px solid; border-color: var(--hi) var(--dark) var(--dark) var(--hi); min-height: 30px; display: flex; align-items: center; white-space: nowrap; overflow: hidden; }
+.rows { list-style: none; margin: 0; padding: 0; }
+.row { min-height: 40px; padding: 0 2px; }
+.row:nth-child(even) { background: rgba(0,0,0,.05); }
+:root[data-skin="nightshift"] .row:nth-child(even) { background: rgba(255,255,255,.04); }
+.row > span { padding: 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .grip { cursor: grab; color: var(--ink-dim); padding: 0; display: grid; place-items: center; }
+.row .grip svg { width: 10px; height: 12px; fill: currentColor; }
+.row .no { text-align: right; }
+.row .dur { text-align: right; font-variant-numeric: tabular-nums; }
+.row .rm { width: 32px; height: 32px; display: grid; place-items: center; background: transparent; border: 0; color: inherit; }
+.row .rm svg { width: 10px; height: 10px; fill: currentColor; }
+.row.current { background: var(--sel); color: var(--sel-ink); }
+.row.current .grip { color: var(--sel-ink); }
+.row.current .no::before { content: "▶"; margin-right: 3px; font-size: 8px; }
+.pl-wrap { display: grid; grid-template-columns: 1fr 18px; gap: 0; }
+.scrollbar { background: repeating-conic-gradient(var(--hi) 0 25%, var(--face-2) 0 50%) 0 0 / 4px 4px; position: relative; }
+.scrollbar .arrow { position: absolute; left: 0; right: 0; height: 18px; background: var(--face); display: grid; place-items: center; }
+.scrollbar .arrow svg { width: 8px; height: 8px; fill: var(--ink); }
+.scrollbar .arrow.up { top: 0; } .scrollbar .arrow.down { bottom: 0; }
+.scrollbar .grab { position: absolute; left: 0; right: 0; top: 18px; height: 70%; background: var(--face); }
+.statusbar { display: grid; grid-template-columns: 1fr auto auto; gap: 4px; padding: 6px 8px 4px; font-size: 12px; }
+.statusbar span { padding: 3px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.statusbar .credit { display: flex; align-items: center; gap: 6px; color: var(--ink-dim); }
+.statusbar .credit a { color: inherit; }
+.statusbar .credit svg { width: 14px; height: 16px; shape-rendering: auto; }
+
+.skin-row { display: flex; gap: 4px; align-items: center; }
+.skin-row .btn { min-height: 30px; padding: 0 8px; font-size: 11px; }
+
+/* ---- States section (design review only) ---- */
+.states { max-width: 1080px; margin: 36px auto 0; display: grid; gap: 14px; }
+.states h2 { font-size: 12px; letter-spacing: .2em; text-transform: uppercase; color: #fff; margin: 0; text-shadow: 1px 1px 0 #000; }
+.states-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+.states .app { width: 100%; }
+.lcd.idle .marquee { animation: none; padding-left: 0; }
+.empty { padding: 30px 16px; text-align: center; display: grid; justify-items: center; gap: 10px; background: var(--hi); color: #111; }
+:root[data-skin="nightshift"] .empty { background: #1d1f24; color: var(--ink); }
+.empty .dash { border: 2px dashed #666; padding: 20px 14px; width: 100%; display: grid; justify-items: center; gap: 10px; }
+.empty p { margin: 0; font-weight: 700; }
+.empty small { color: #555; }
+:root[data-skin="nightshift"] .empty small { color: var(--ink-dim); }
+.dragover { outline: 3px dashed var(--focus); outline-offset: -3px; position: relative; }
+.drop-overlay { position: absolute; inset: 14px; display: grid; place-items: center; text-align: center; background: color-mix(in srgb, var(--face) 85%, transparent); border: 3px dashed var(--sel); }
+.drop-overlay b { display: block; font-size: 18px; }
+.drop-overlay span { color: var(--ink-dim); font-size: 12px; }
+
+@media (prefers-reduced-motion: reduce) { .lcd .title .marquee { animation: none; padding-left: 0; } }
+
+@media (max-width: 760px) {
+  body { padding: 10px 8px 28px; }
+  .work { grid-template-columns: minmax(0, 1fr); padding: 8px 6px 6px; }
+  .states, .states-grid { grid-template-columns: minmax(0, 1fr); }
+  .menubar button { padding: 4px 7px; }
+  .lcd .time { font-size: 32px; }
+  .lcd .fmt { text-align: left; }
+  .faders { gap: 1px; }
+  .fader .track { height: 92px; }
+  .fader .track::after { width: 16px; }
+  .eq-top { grid-template-columns: 1fr 1fr; }
+  .eq-top .skin-row { grid-column: 1 / -1; }
+  .thead, .row { grid-template-columns: 22px 1fr 52px 34px; }
+  .thead .h-no, .thead .h-art, .thead .h-fmt, .row .no, .row .art, .row .fmt { display: none; }
+  .statusbar { grid-template-columns: 1fr; }
+  .states-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<main class="app out" aria-label="Player">
+  <div class="titlebar">
+    <svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M5 2h7v2h-5v8a2 2 0 1 1-2-2V2z"/></svg>
+    <span class="t">Screensaver Love.m3u — 12 tracks</span>
+    <button class="wb out" aria-label="Minimise"><svg viewBox="0 0 10 10"><rect x="1" y="7" width="8" height="2" fill="currentColor"/></svg></button>
+    <button class="wb out" aria-label="Compact mode"><svg viewBox="0 0 10 10"><path d="M1 1h8v8H1zM2 3v5h6V3z" fill="currentColor"/></svg></button>
+  </div>
+  <nav class="menubar" aria-label="Menu">
+    <button><u>F</u>ile</button><button><u>P</u>laylist</button><button><u>V</u>iew</button><button><u>S</u>kin</button><button><u>H</u>elp</button>
+  </nav>
+
+  <div class="work">
+    <div class="col">
+      <fieldset class="group">
+        <legend>Deck</legend>
+        <div class="lcd in" role="status" aria-live="polite">
+          <div class="flags"><span class="on">PLAY</span><span class="on">SHUF</span><span class="on">RPT:ALL</span><span class="on">EQ</span><span>MUTE</span><span class="trackno">TRK 07/12</span></div>
+          <div class="title"><span class="marquee">DIAL-UP HEART - THE VELVET MODEMS - SCREENSAVER LOVE (2001)</span></div>
+          <div class="big">
+            <div class="time">02:41<small>-01:52</small></div>
+            <div class="fmt">MP3 192 KBPS<br>44100 HZ STEREO</div>
+          </div>
+        </div>
+        <div class="seekrow">
+          <div class="slider in" role="slider" aria-label="Seek" aria-valuemin="0" aria-valuemax="273" aria-valuenow="161" tabindex="0" style="--v:59%"><span class="ticks"></span><span class="fill"></span><span class="thumb out"></span></div>
+        </div>
+        <div class="transport" role="group" aria-label="Transport">
+          <button class="btn out" aria-label="Previous"><svg viewBox="0 0 14 14"><path d="M2 2h2v10H2zM12 2L5 7l7 5z"/></svg></button>
+          <button class="btn out" aria-label="Pause" aria-pressed="true"><svg viewBox="0 0 14 14"><path d="M2 2h4v10H2zM8 2h4v10H8z"/></svg></button>
+          <button class="btn out" aria-label="Stop"><svg viewBox="0 0 14 14"><path d="M2 2h10v10H2z"/></svg></button>
+          <button class="btn out" aria-label="Next"><svg viewBox="0 0 14 14"><path d="M12 2h-2v10h2zM2 2l7 5-7 5z"/></svg></button>
+          <button class="btn out">Open…</button>
+        </div>
+        <div class="volrow">
+          <span style="font-weight:700">Vol</span>
+          <div class="slider in" role="slider" aria-label="Volume" aria-valuemin="0" aria-valuemax="100" aria-valuenow="72" tabindex="0" style="--v:72%"><span class="ticks"></span><span class="fill"></span><span class="thumb out"></span></div>
+          <span style="font-weight:700">72%</span>
+          <button class="btn out" aria-pressed="false">Mute</button>
+        </div>
+      </fieldset>
+
+      <fieldset class="group viz">
+        <legend>Visualiser</legend>
+        <div class="radios" role="radiogroup" aria-label="Mode">
+          <label><input type="radio" name="mode" value="spectrum" checked> Spectrum</label>
+          <label><input type="radio" name="mode" value="scope"> Oscilloscope</label>
+          <label><input type="radio" name="mode" value="off"> Off</label>
+        </div>
+        <div class="well in"><canvas id="viz" role="img" aria-label="Spectrum analyser"></canvas><div class="axis"><span>31</span><span>125</span><span>500</span><span>2k</span><span>8k</span><span>16k</span></div></div>
+      </fieldset>
+
+      <fieldset class="group eq">
+        <legend>Equaliser</legend>
+        <div class="eq-top">
+          <label class="check"><input type="checkbox" checked> Enabled</label>
+          <select class="select in" aria-label="Preset"><option>Preset: Rock</option><option>Flat</option><option>Pop</option><option>Bass boost</option><option>Treble</option><option>Classical</option><option>Vocal</option><option>Dance</option><option>Custom</option></select>
+          <button class="btn out" style="min-height:40px">Reset</button>
+        </div>
+        <div class="faders" role="group" aria-label="Bands">
+          <div class="fader preamp">+2<button class="track" role="slider" aria-label="Preamp" aria-valuemin="-12" aria-valuemax="12" aria-valuenow="2" style="--v:.58"><i></i></button><small>PRE</small></div>
+          <div class="fader">+5<button class="track" role="slider" aria-label="31 Hz" aria-valuemin="-12" aria-valuemax="12" aria-valuenow="5" style="--v:.71"><i></i></button><small>31</small></div>
+          <div class="fader">+4<button class="track" role="slider" aria-label="62 Hz" aria-valuemin="-12" aria-valuemax="12" aria-valuenow="4" style="--v:.67"><i></i></button><small>62</small></div>
+          <div class="fader">+2<button class="track" role="slider" aria-label="125 Hz" aria-valuemin="-12" aria-valuemax="12" aria-valuenow="2" style="--v:.58"><i></i></button><small>125</small></div>
+          <div class="fader">0<button class="track" role="slider" aria-label="250 Hz" aria-valuemin="-12" aria-valuemax="12" aria-valuenow="0" style="--v:.5"><i></i></button><small>250</small></div>
+          <div class="fader">-2<button class="track" role="slider" aria-label="500 Hz" aria-valuemin="-12" aria-valuemax="12" aria-valuenow="-2" style="--v:.42"><i></i></button><small>500</small></div>
+          <div class="fader">-1<button class="track" role="slider" aria-label="1 kHz" aria-valuemin="-12" aria-valuemax="12" aria-valuenow="-1" style="--v:.46"><i></i></button><small>1k</small></div>
+          <div class="fader">+1<button class="track" role="slider" aria-label="2 kHz" aria-valuemin="-12" aria-valuemax="12" aria-valuenow="1" style="--v:.54"><i></i></button><small>2k</small></div>
+          <div class="fader">+3<button class="track" role="slider" aria-label="4 kHz" aria-valuemin="-12" aria-valuemax="12" aria-valuenow="3" style="--v:.62"><i></i></button><small>4k</small></div>
+          <div class="fader">+4<button class="track" role="slider" aria-label="8 kHz" aria-valuemin="-12" aria-valuemax="12" aria-valuenow="4" style="--v:.67"><i></i></button><small>8k</small></div>
+          <div class="fader">+4<button class="track" role="slider" aria-label="16 kHz" aria-valuemin="-12" aria-valuemax="12" aria-valuenow="4" style="--v:.67"><i></i></button><small>16k</small></div>
+        </div>
+      </fieldset>
+    </div>
+
+    <div class="col">
+      <fieldset class="group playlist">
+        <legend>Playlist</legend>
+        <div class="pl-top">
+          <input class="field in" type="search" placeholder="Filter: type to search title or artist" aria-label="Search playlist">
+          <div class="pl-btns">
+            <button class="btn out">Add…</button>
+            <button class="btn out">Remove</button>
+            <button class="btn out">Clear</button>
+            <button class="btn out" aria-pressed="true"><span class="ind"></span>Shuffle</button>
+            <button class="btn out" aria-pressed="true"><span class="ind"></span>Repeat: all</button>
+          </div>
+        </div>
+        <div class="pl-wrap in">
+          <div class="table">
+            <div class="thead" role="row"><span></span><span class="h-no">#</span><span>Title</span><span class="h-art">Artist</span><span class="h-fmt">Fmt</span><span>Time</span><span></span></div>
+            <ol class="rows" id="tracks"></ol>
+          </div>
+          <div class="scrollbar" aria-hidden="true">
+            <span class="arrow up out"><svg viewBox="0 0 8 8"><path d="M4 1l4 5H0z"/></svg></span>
+            <span class="grab out"></span>
+            <span class="arrow down out"><svg viewBox="0 0 8 8"><path d="M4 7L0 2h8z"/></svg></span>
+          </div>
+        </div>
+      </fieldset>
+      <div class="skin-row" role="group" aria-label="Skin">
+        <span style="font-weight:700;margin-right:4px">Skin:</span>
+        <button class="btn out" aria-pressed="true" data-skin="oatmeal">Oatmeal</button>
+        <button class="btn out" aria-pressed="false" data-skin="nightshift">Night shift</button>
+        <button class="btn out" aria-pressed="false" data-skin="cobalt">Cobalt</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="statusbar">
+    <span class="in">12 tracks · 48:12 total · drag rows to reorder</span>
+    <span class="in">MP3 192 kbps 44.1 kHz</span>
+    <span class="in credit">
+      <svg viewBox="0 0 18 20" aria-hidden="true"><path fill="currentColor" d="M2 2.5h9a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H8v4H6v-4H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1z"/><path fill="currentColor" d="M12.2 3.2l3 1.2v2.8l-3 1.2z"/><rect x="1.5" y="13" width="15" height="6" rx="1" fill="none" stroke="currentColor" stroke-width="1.2"/><text x="9" y="17.8" text-anchor="middle" font-size="4.6" font-weight="700" font-family="system-ui, sans-serif" fill="currentColor">FREE</text></svg>
+      Free, by <a href="https://maksforge.com">MaksForge</a> · local only
+    </span>
+  </div>
+</main>
+
+<section class="states" aria-label="Other states (for design review)">
+  <h2>Empty state</h2>
+  <div class="states-grid">
+    <div class="app out" style="padding:10px">
+      <div class="lcd in idle">
+        <div class="flags"><span>PLAY</span><span>SHUF</span><span>RPT</span><span class="on">EQ</span><span>MUTE</span><span class="trackno">TRK --/--</span></div>
+        <div class="title"><span class="marquee">NO MEDIA · DROP OR OPEN</span></div>
+        <div class="big"><div class="time">--:--</div><div class="fmt">--- KBPS<br>----- HZ</div></div>
+      </div>
+    </div>
+    <div class="app out" style="padding:10px">
+      <div class="empty in">
+        <div class="dash">
+          <svg width="36" height="36" viewBox="0 0 36 36" aria-hidden="true" style="shape-rendering:auto"><path d="M18 5v16M11 14l7 7 7-7" fill="none" stroke="currentColor" stroke-width="3"/><path d="M5 23v6h26v-6" fill="none" stroke="currentColor" stroke-width="3"/></svg>
+          <p>Drop audio files or a folder here</p>
+          <small>MP3, FLAC, OGG, WAV, M4A · nothing leaves this device</small>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center"><button class="btn out">Open files…</button><button class="btn out">Open folder…</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <h2>Drag-over state</h2>
+  <div class="app out dragover" style="padding:10px;min-height:180px">
+    <fieldset class="group playlist" style="min-height:150px"><legend>Playlist</legend><div class="table in" style="min-height:110px"></div></fieldset>
+    <div class="drop-overlay"><div><b>Drop to add 14 files</b><span>They go to the end of the playlist</span></div></div>
+  </div>
+</section>
+
+<script>
+(function () {
+  const tracks = [
+    ['Pentium Summer', 'The Velvet Modems', 'MP3', '3:58'],
+    ['Burned CD 03', 'Cassette Weather', 'MP3', '4:12'],
+    ['Milk Carton Radio', 'Nina Vaskova', 'FLAC', '3:21'],
+    ['Floppy Disk Blues', 'Low Orbit Picnic', 'MP3', '2:49'],
+    ['Static on FM', 'Dial Tone Choir', 'OGG', '5:04'],
+    ['Minidisc Mornings', 'Cassette Weather', 'MP3', '3:37'],
+    ['Dial-Up Heart', 'The Velvet Modems', 'MP3', '4:33'],
+    ['Broadband Dreams', 'Orbital Lullaby Dept.', 'MP3', '4:01'],
+    ['Screensaver Love', 'The Velvet Modems', 'MP3', '3:44'],
+    ['Infrared Port', 'Nina Vaskova', 'FLAC', '4:50'],
+    ['Buffering…', 'Low Orbit Picnic', 'MP3', '3:12'],
+    ['Last Train to Y2K', 'Dial Tone Choir', 'OGG', '4:51'],
+  ];
+  document.getElementById('tracks').innerHTML = tracks.map((t, i) => `
+    <li class="row${i === 6 ? ' current' : ''}" draggable="true" ${i === 6 ? 'aria-current="true"' : ''}>
+      <span class="grip" aria-hidden="true"><svg viewBox="0 0 10 12"><path d="M0 1h10v2H0zM0 5h10v2H0zM0 9h10v2H0z"/></svg></span>
+      <span class="no">${String(i + 1).padStart(2, '0')}</span>
+      <span class="t">${t[0]}</span>
+      <span class="art">${t[1]}</span>
+      <span class="fmt">${t[2]}</span>
+      <span class="dur">${t[3]}</span>
+      <button class="rm" aria-label="Remove ${t[0]}"><svg viewBox="0 0 10 10"><path d="M1 0l4 4 4-4 1 1-4 4 4 4-1 1-4-4-4 4-1-1 4-4-4-4z"/></svg></button>
+    </li>`).join('');
+
+  document.querySelectorAll('[data-skin]').forEach(b => b.addEventListener('click', () => {
+    document.documentElement.dataset.skin = b.dataset.skin;
+    document.querySelectorAll('[data-skin]').forEach(x => x.setAttribute('aria-pressed', x === b));
+    draw();
+  }));
+
+  const canvas = document.getElementById('viz'), ctx = canvas.getContext('2d');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let mode = 'spectrum', t = 0;
+  document.querySelectorAll('input[name=mode]').forEach(r => r.addEventListener('change', () => { mode = r.value; draw(); }));
+  const bars = Array.from({ length: 20 }, (_, i) => 0.25 + 0.6 * Math.abs(Math.sin(i * 0.9 + 1)) * (1 - i / 30));
+  function draw() {
+    const dpr = devicePixelRatio || 1, w = canvas.clientWidth, h = canvas.clientHeight;
+    if (canvas.width !== w * dpr) { canvas.width = w * dpr; canvas.height = h * dpr; }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, h);
+    const cs = getComputedStyle(document.documentElement);
+    const c1 = cs.getPropertyValue('--viz').trim(), c2 = cs.getPropertyValue('--viz-2').trim();
+    if (mode === 'off') { ctx.fillStyle = c2; ctx.fillText('VISUALISER OFF', 8, 16); return; }
+    const cell = 4;
+    if (mode === 'spectrum') {
+      const n = bars.length, bw = Math.floor((w - 12) / n / cell) * cell - cell;
+      for (let i = 0; i < n; i++) {
+        const v = Math.max(0.05, Math.min(0.95, bars[i] + 0.12 * Math.sin(t * 0.07 + i * 1.3)));
+        const rows = Math.floor(v * (h - 20) / cell), x = 6 + i * (bw + cell);
+        for (let r = 0; r < rows; r++) {
+          const y = h - 14 - (r + 1) * cell;
+          ctx.fillStyle = r > rows * 0.7 ? c1 : c2;
+          for (let cx = 0; cx < bw; cx += cell) ctx.fillRect(x + cx, y, cell - 1, cell - 1);
+        }
+        ctx.fillStyle = c1; ctx.fillRect(x, h - 14 - (rows + 2) * cell, bw - 1, cell - 1);
+      }
+    } else {
+      ctx.fillStyle = c1;
+      for (let x = 0; x < w; x += cell) {
+        const p = x / w * Math.PI * 6 + t * 0.1;
+        const y = Math.round((h / 2 - 6 + Math.sin(p) * 28 * Math.sin(p * 0.37 + 1) + Math.sin(p * 3.1) * 6) / cell) * cell;
+        ctx.fillRect(x, y, cell - 1, cell - 1);
+      }
+    }
+  }
+  function loop() { t++; draw(); if (!reduce) requestAnimationFrame(loop); }
+  loop();
+  addEventListener('resize', draw);
+})();
+</script>
+</body>
+</html>

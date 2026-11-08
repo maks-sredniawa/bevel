@@ -1,0 +1,679 @@
+<!doctype html>
+<html lang="en" data-skin="titanium">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Direction A — Hi-fi stack</title>
+<style>
+:root {
+  --font-ui: system-ui, "Segoe UI", Roboto, "Noto Sans", "Liberation Sans", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", "Liberation Mono", monospace;
+  --radius: 6px;
+  --bevel-hi: rgba(255,255,255,.75);
+  --bevel-lo: rgba(0,0,0,.45);
+}
+:root[data-skin="titanium"] {
+  --room: #1b1d20;
+  --metal-hi: #eceeec;
+  --metal: #b7babb;
+  --metal-lo: #7f8486;
+  --metal-edge: #4b4f52;
+  --ink: #16191a;
+  --ink-soft: #3b4042;
+  --engrave-hi: rgba(255,255,255,.8);
+  --engrave-lo: rgba(0,0,0,.35);
+  --lcd-bg-1: #f3bf57;
+  --lcd-bg-2: #d99a2c;
+  --lcd-ink: #2a1a05;
+  --lcd-ghost: rgba(42,26,5,.13);
+  --lcd-dim: rgba(42,26,5,.62);
+  --glass-bg: #101312;
+  --glass-ink: #e8e3d6;
+  --glass-dim: #9b968b;
+  --glass-row: rgba(255,255,255,.04);
+  --glass-current: rgba(243,191,87,.18);
+  --glass-current-edge: #f3bf57;
+  --viz: #f3bf57;
+  --viz-peak: #fff1c6;
+  --led: #ff3b2a;
+  --led-on: #35e07a;
+  --focus: #1f6dff;
+  --knob-hi: #f4f5f4;
+  --knob-lo: #8d9193;
+}
+:root[data-skin="graphite"] {
+  --room: #0b0c0e;
+  --metal-hi: #5d6164;
+  --metal: #353a3d;
+  --metal-lo: #1c1f21;
+  --metal-edge: #0a0b0c;
+  --ink: #f0f2f1;
+  --ink-soft: #c7cccd;
+  --engrave-hi: rgba(255,255,255,.14);
+  --engrave-lo: rgba(0,0,0,.85);
+  --lcd-bg-1: #10211a;
+  --lcd-bg-2: #0a1510;
+  --lcd-ink: #6cf5b2;
+  --lcd-ghost: rgba(108,245,178,.12);
+  --lcd-dim: rgba(108,245,178,.6);
+  --glass-bg: #080a0b;
+  --glass-ink: #e6ecea;
+  --glass-dim: #8f9896;
+  --glass-row: rgba(255,255,255,.04);
+  --glass-current: rgba(108,245,178,.14);
+  --glass-current-edge: #6cf5b2;
+  --viz: #6cf5b2;
+  --viz-peak: #e2fff1;
+  --led: #ff3b2a;
+  --led-on: #6cf5b2;
+  --focus: #ffd34d;
+  --knob-hi: #777c80;
+  --knob-lo: #202325;
+}
+:root[data-skin="champagne"] {
+  --room: #241f19;
+  --metal-hi: #f6ecd6;
+  --metal: #cdb98f;
+  --metal-lo: #8c7a55;
+  --metal-edge: #4d4230;
+  --ink: #1f1a10;
+  --ink-soft: #4a3f2c;
+  --engrave-hi: rgba(255,255,255,.8);
+  --engrave-lo: rgba(0,0,0,.35);
+  --lcd-bg-1: #b7e36f;
+  --lcd-bg-2: #93c44c;
+  --lcd-ink: #15260a;
+  --lcd-ghost: rgba(21,38,10,.13);
+  --lcd-dim: rgba(21,38,10,.62);
+  --glass-bg: #121410;
+  --glass-ink: #ece8dc;
+  --glass-dim: #a19c8f;
+  --glass-row: rgba(255,255,255,.04);
+  --glass-current: rgba(183,227,111,.18);
+  --glass-current-edge: #b7e36f;
+  --viz: #b7e36f;
+  --viz-peak: #f3ffdc;
+  --led: #ff3b2a;
+  --led-on: #b7e36f;
+  --focus: #1f6dff;
+  --knob-hi: #fbf4e4;
+  --knob-lo: #a28f66;
+}
+
+* { box-sizing: border-box; }
+html { background: var(--room); }
+body {
+  margin: 0;
+  padding: 24px 16px 40px;
+  font-family: var(--font-ui);
+  color: var(--ink);
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(255,255,255,.07), transparent 60%),
+    var(--room);
+  min-height: 100vh;
+}
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+svg { display: block; }
+
+.rack { max-width: 1000px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+
+.panel {
+  position: relative;
+  border-radius: var(--radius);
+  padding: 14px;
+  color: var(--ink);
+  background:
+    repeating-linear-gradient(90deg, rgba(255,255,255,.07) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, var(--metal-hi), var(--metal) 45%, var(--metal-lo));
+  box-shadow:
+    inset 0 1px 0 var(--bevel-hi),
+    inset 1px 0 0 rgba(255,255,255,.35),
+    inset -1px 0 0 rgba(0,0,0,.25),
+    inset 0 -2px 0 var(--bevel-lo),
+    0 0 0 1px var(--metal-edge),
+    0 10px 24px rgba(0,0,0,.45);
+}
+.panel::before, .panel::after,
+.panel > .screw-b::before, .panel > .screw-b::after {
+  content: "";
+  position: absolute;
+  width: 9px; height: 9px; border-radius: 50%;
+  background:
+    linear-gradient(45deg, transparent 44%, rgba(0,0,0,.6) 45% 55%, transparent 56%),
+    radial-gradient(circle at 35% 35%, var(--knob-hi), var(--knob-lo));
+  box-shadow: 0 1px 1px rgba(255,255,255,.5), inset 0 0 0 1px rgba(0,0,0,.4);
+}
+.panel::before { top: 6px; left: 6px; }
+.panel::after { top: 6px; right: 6px; }
+.panel > .screw-b::before { bottom: 6px; left: 6px; }
+.panel > .screw-b::after { bottom: 6px; right: 6px; }
+
+.label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  text-shadow: 0 1px 0 var(--engrave-hi), 0 -1px 0 var(--engrave-lo);
+}
+
+.panel-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin: 0 8px 10px;
+  min-height: 28px;
+}
+
+.mbtn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-width: 44px; min-height: 44px; padding: 0 12px;
+  border: 0; border-radius: 5px;
+  color: var(--ink);
+  background: linear-gradient(180deg, var(--metal-hi), var(--metal) 60%, var(--metal-lo));
+  box-shadow:
+    inset 0 1px 0 var(--bevel-hi),
+    inset 0 -2px 0 var(--bevel-lo),
+    0 0 0 1px var(--metal-edge),
+    0 2px 3px rgba(0,0,0,.4);
+  font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+}
+.mbtn:active, .mbtn[aria-pressed="true"] {
+  background: linear-gradient(180deg, var(--metal-lo), var(--metal) 70%, var(--metal-hi));
+  box-shadow: inset 0 2px 4px rgba(0,0,0,.45), 0 0 0 1px var(--metal-edge);
+}
+.mbtn svg { width: 16px; height: 16px; fill: currentColor; }
+.mbtn .led {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--metal-lo);
+  box-shadow: inset 0 1px 1px rgba(0,0,0,.6);
+}
+.mbtn[aria-pressed="true"] .led { background: var(--led-on); box-shadow: 0 0 6px var(--led-on); }
+
+/* ---- Main deck ---- */
+.deck-grid {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas: "transport lcd volume" "seek seek volume";
+  gap: 14px 18px;
+  align-items: center;
+  padding: 6px 8px 4px;
+}
+.transport { grid-area: transport; display: grid; grid-template-columns: repeat(5, auto); gap: 6px; align-items: center; }
+.transport .mbtn { min-width: 48px; min-height: 48px; padding: 0; }
+.transport .mbtn.play { min-width: 64px; min-height: 56px; }
+.transport .mbtn.play svg { width: 22px; height: 22px; }
+
+.lcd {
+  grid-area: lcd;
+  position: relative;
+  min-width: 0;
+  border-radius: 4px;
+  padding: 10px 14px 10px;
+  color: var(--lcd-ink);
+  background: linear-gradient(180deg, var(--lcd-bg-1), var(--lcd-bg-2));
+  box-shadow:
+    inset 0 2px 6px rgba(0,0,0,.55),
+    inset 0 0 0 1px rgba(0,0,0,.5),
+    0 1px 0 var(--bevel-hi);
+  font-family: var(--font-mono);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: "flags flags" "title title" "time format";
+  gap: 6px 16px;
+  align-items: end;
+}
+.lcd::after {
+  content: "";
+  position: absolute; inset: 0; border-radius: 4px; pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(0,0,0,.05) 0 1px, transparent 1px 3px);
+}
+.lcd .flags { grid-area: flags; display: flex; gap: 10px; font-size: 11px; font-weight: 700; letter-spacing: .08em; }
+.lcd .flags span { opacity: .25; }
+.lcd .flags span.on { opacity: 1; }
+.lcd .flags .trackno { margin-left: auto; opacity: 1; }
+.lcd .title { grid-area: title; overflow: hidden; white-space: nowrap; font-size: 18px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent); }
+.lcd .title .marquee { display: inline-block; padding-left: 100%; animation: marquee 14s linear infinite; animation-delay: -6s; }
+@keyframes marquee { to { transform: translateX(-100%); } }
+.lcd .time { grid-area: time; display: flex; align-items: baseline; gap: 14px; }
+.lcd .seg { display: inline-flex; gap: 3px; }
+.lcd .seg svg { height: 44px; width: auto; }
+.lcd .seg.small svg { height: 20px; }
+.lcd .remaining { display: flex; align-items: baseline; gap: 6px; color: var(--lcd-dim); font-size: 11px; font-weight: 700; letter-spacing: .08em; }
+.lcd .format { grid-area: format; display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.lcd .format b {
+  font-size: 11px; font-weight: 700; letter-spacing: .06em; padding: 2px 6px;
+  border: 1.5px solid currentColor; border-radius: 2px;
+}
+
+.seek { grid-area: seek; display: grid; grid-template-columns: 1fr; align-items: center; padding: 0 2px; }
+.groove {
+  position: relative; height: 10px; border-radius: 5px;
+  background: linear-gradient(180deg, #15181a, #2b2f32);
+  box-shadow: inset 0 1px 3px rgba(0,0,0,.8), 0 1px 0 var(--bevel-hi);
+}
+.groove .fill { position: absolute; left: 0; top: 2px; bottom: 2px; width: var(--v); border-radius: 4px; background: var(--viz); box-shadow: 0 0 6px var(--viz); }
+.groove .cap {
+  position: absolute; top: 50%; left: var(--v); translate: -50% -50%;
+  width: 26px; height: 24px; border-radius: 4px;
+  background: linear-gradient(90deg, var(--metal-lo), var(--metal-hi) 30%, var(--metal) 60%, var(--metal-lo));
+  box-shadow: 0 0 0 1px var(--metal-edge), 0 2px 3px rgba(0,0,0,.5), inset 0 1px 0 var(--bevel-hi);
+}
+.groove .cap::after { content: ""; position: absolute; left: 50%; top: 4px; bottom: 4px; width: 2px; translate: -50%; background: var(--metal-edge); }
+
+.volume { grid-area: volume; display: grid; justify-items: center; gap: 8px; min-width: 110px; }
+.knob {
+  position: relative; width: 84px; height: 84px; border-radius: 50%; border: 0; padding: 0;
+  background:
+    radial-gradient(circle at 50% 40%, var(--knob-hi), var(--metal) 55%, var(--knob-lo) 100%);
+  box-shadow: 0 0 0 1px var(--metal-edge), 0 4px 8px rgba(0,0,0,.55), inset 0 1px 0 var(--bevel-hi), inset 0 -2px 2px rgba(0,0,0,.35);
+}
+.knob::before {
+  content: ""; position: absolute; inset: 8px; border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, rgba(0,0,0,.18) 0 2deg, transparent 2deg 12deg);
+  mask: radial-gradient(circle, transparent 60%, #000 61%);
+}
+.knob .pointer { position: absolute; left: 50%; top: 50%; width: 4px; height: 34px; translate: -50% -100%; transform-origin: 50% 100%; rotate: var(--deg); border-radius: 2px; background: var(--led); box-shadow: 0 0 5px var(--led); }
+.knob .pointer::before { content: ""; position: absolute; inset: auto -2px -2px -2px; height: 4px; border-radius: 2px; background: var(--led); }
+.volume .readout { font-family: var(--font-mono); font-size: 12px; font-weight: 700; color: var(--ink-soft); }
+.volume .mbtn { min-width: 64px; min-height: 36px; }
+
+/* ---- Row 2 ---- */
+.row2 { display: grid; grid-template-columns: 11fr 9fr; gap: 14px; }
+
+.eq-body { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: stretch; padding: 4px 8px 8px; }
+.faders { display: grid; grid-template-columns: repeat(11, minmax(0, 1fr)); gap: 4px; }
+.fader { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr auto; justify-items: center; gap: 6px; min-width: 0; }
+.fader .track { max-width: 100%; min-width: 0; }
+.fader .db, .fader .hz { font-family: var(--font-mono); font-size: 10px; font-weight: 700; color: var(--ink-soft); letter-spacing: .02em; }
+.fader .track {
+  position: relative; width: 100%; height: 118px; display: grid; justify-items: center; border: 0; background: none; padding: 0;
+}
+.fader .track::before {
+  content: ""; width: 6px; height: 100%; border-radius: 3px;
+  background: linear-gradient(180deg, #15181a, #2b2f32);
+  box-shadow: inset 0 1px 3px rgba(0,0,0,.8), 0 1px 0 var(--bevel-hi);
+}
+.fader .track::after {
+  content: ""; position: absolute; left: 50%; top: calc((1 - var(--v)) * 100%); translate: -50% -50%;
+  width: 22px; height: 12px; border-radius: 2px;
+  background: linear-gradient(180deg, var(--metal-hi), var(--metal) 45%, var(--metal-lo));
+  box-shadow: 0 0 0 1px var(--metal-edge), 0 2px 2px rgba(0,0,0,.5);
+}
+.fader .track span { position: absolute; left: 50%; top: calc((1 - var(--v)) * 100%); translate: -50% -50%; width: 14px; height: 2px; background: var(--metal-edge); }
+.fader.preamp { padding-right: 10px; border-right: 1px solid rgba(0,0,0,.25); margin-right: 2px; }
+.eq-side { display: grid; gap: 8px; align-content: start; }
+.select {
+  min-height: 44px; padding: 0 12px; border: 0; border-radius: 4px;
+  color: var(--lcd-ink);
+  background: linear-gradient(180deg, var(--lcd-bg-1), var(--lcd-bg-2));
+  box-shadow: inset 0 2px 5px rgba(0,0,0,.5), inset 0 0 0 1px rgba(0,0,0,.5);
+  font-family: var(--font-mono); font-weight: 700; font-size: 13px;
+}
+.eq-off .faders { opacity: .5; }
+
+.panel.viz { display: grid; grid-template-rows: auto 1fr; }
+.viz-body { display: grid; gap: 10px; padding: 4px 8px 8px; }
+.viz .glass { display: grid; min-height: 150px; }
+.glass {
+  position: relative; border-radius: 4px;
+  background: var(--glass-bg);
+  box-shadow: inset 0 2px 8px rgba(0,0,0,.9), inset 0 0 0 1px #000, 0 1px 0 var(--bevel-hi);
+}
+.viz canvas { width: 100%; height: 100%; min-height: 150px; display: block; }
+.viz .scale { position: absolute; left: 10px; right: 10px; bottom: 4px; display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 9px; color: var(--glass-dim); letter-spacing: .05em; pointer-events: none; }
+.modes { display: flex; gap: 6px; }
+
+/* ---- Playlist ---- */
+.pl-tools { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; margin: 0 8px 10px; }
+.search { position: relative; min-width: 0; }
+.search input {
+  width: 100%; min-height: 44px; border: 0; border-radius: 4px; padding: 0 12px 0 36px;
+  color: var(--lcd-ink); background: linear-gradient(180deg, var(--lcd-bg-1), var(--lcd-bg-2));
+  box-shadow: inset 0 2px 5px rgba(0,0,0,.5), inset 0 0 0 1px rgba(0,0,0,.5);
+  font-family: var(--font-mono); font-weight: 700; font-size: 13px;
+}
+.search input::placeholder { color: var(--lcd-dim); }
+.search svg { position: absolute; left: 11px; top: 50%; translate: 0 -50%; width: 16px; height: 16px; fill: none; stroke: var(--lcd-ink); stroke-width: 2.2; }
+.pl-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+
+.tracks { margin: 0 8px; padding: 6px; }
+.tracks ol { list-style: none; margin: 0; padding: 0; font-family: var(--font-mono); color: var(--glass-ink); }
+.track {
+  display: grid; grid-template-columns: 24px 28px 1fr auto 56px 36px; gap: 8px; align-items: center;
+  min-height: 44px; padding: 0 4px 0 2px; border-radius: 3px; font-size: 13px;
+}
+.track:nth-child(even) { background: var(--glass-row); }
+.track .grip { color: var(--glass-dim); display: grid; place-items: center; cursor: grab; height: 100%; }
+.track .grip i { display: block; width: 8px; height: 14px; background: radial-gradient(circle, currentColor 1.1px, transparent 1.3px) 0 0 / 4px 4px; }
+.track .no { color: var(--glass-dim); text-align: right; font-size: 11px; }
+.track .meta { min-width: 0; display: grid; }
+.track .t { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.track .a { color: var(--glass-dim); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.track .fmt { color: var(--glass-dim); font-size: 10px; letter-spacing: .06em; }
+.track .dur { text-align: right; font-variant-numeric: tabular-nums; }
+.track .rm { width: 36px; height: 36px; border: 0; border-radius: 3px; background: transparent; color: var(--glass-dim); display: grid; place-items: center; }
+.track .rm:hover { color: var(--glass-ink); background: rgba(255,255,255,.08); }
+.track .rm svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2.4; fill: none; }
+.track.current { background: var(--glass-current); box-shadow: inset 3px 0 0 var(--glass-current-edge); }
+.track.current .no { color: var(--glass-current-edge); }
+.track.current .no::before { content: "▶ "; font-size: 9px; }
+.track.current .t { color: var(--glass-current-edge); }
+.track.dragging { opacity: .6; outline: 2px dashed var(--glass-current-edge); }
+.pl-foot { display: flex; justify-content: space-between; gap: 12px; margin: 10px 14px 0; font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--ink-soft); flex-wrap: wrap; }
+
+/* ---- Skins + credit ---- */
+.skins { display: flex; gap: 6px; align-items: center; }
+.swatch { width: 28px; height: 28px; border-radius: 50%; border: 0; box-shadow: 0 0 0 1px var(--metal-edge), inset 0 1px 0 rgba(255,255,255,.6); }
+.swatch[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--ink), 0 0 0 4px var(--metal-hi); }
+.swatch.titanium { background: linear-gradient(135deg, #eceeec, #7f8486 60%, #f3bf57 61%); }
+.swatch.graphite { background: linear-gradient(135deg, #5d6164, #1c1f21 60%, #6cf5b2 61%); }
+.swatch.champagne { background: linear-gradient(135deg, #f6ecd6, #8c7a55 60%, #b7e36f 61%); }
+
+.credit {
+  display: flex; justify-content: center; align-items: center; gap: 8px;
+  margin-top: 8px; font-size: 12px; color: rgba(255,255,255,.55);
+}
+.credit a { color: inherit; text-decoration: none; border-bottom: 1px solid rgba(255,255,255,.25); }
+.credit svg { width: 18px; height: 20px; opacity: .8; }
+
+/* ---- States section (design review only) ---- */
+.states { max-width: 1000px; margin: 40px auto 0; display: grid; gap: 14px; }
+.states h2 { font-size: 12px; letter-spacing: .2em; text-transform: uppercase; color: rgba(255,255,255,.5); margin: 0 0 4px; font-weight: 600; }
+.states-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+.empty-target {
+  margin: 0 8px; padding: 36px 20px; text-align: center; color: var(--glass-ink);
+  display: grid; justify-items: center; gap: 12px;
+}
+.empty-target .dash { border: 2px dashed var(--glass-dim); border-radius: 6px; padding: 24px 16px; width: 100%; display: grid; justify-items: center; gap: 10px; }
+.empty-target .dash p { margin: 0; font-size: 14px; }
+.empty-target .dash small { color: var(--glass-dim); font-size: 12px; }
+.empty-target .dash .mbtn { min-width: 120px; }
+.lcd.idle .title { animation: none; }
+.lcd.idle .marquee { padding-left: 0; animation: none; }
+.panel.dragover { box-shadow: 0 0 0 3px var(--viz), 0 0 28px var(--viz), 0 10px 24px rgba(0,0,0,.45); }
+.drop-overlay {
+  position: absolute; inset: 14px; border-radius: 6px; display: grid; place-items: center; text-align: center;
+  background: color-mix(in srgb, var(--glass-bg) 78%, transparent);
+  border: 3px dashed var(--viz); color: var(--glass-ink); font-family: var(--font-mono);
+}
+.drop-overlay b { font-size: 20px; color: var(--viz); display: block; }
+.drop-overlay span { font-size: 12px; color: var(--glass-dim); }
+
+@media (prefers-reduced-motion: reduce) {
+  .lcd .title .marquee { animation: none; padding-left: 0; }
+}
+
+@media (max-width: 760px) {
+  body { padding: 12px 10px 32px; }
+  .panel { padding: 12px 10px; }
+  .deck-grid { grid-template-columns: 1fr; grid-template-areas: "lcd" "seek" "transport" "volume"; padding: 4px 2px; gap: 12px; }
+  .transport { grid-template-columns: repeat(5, 1fr); gap: 4px; }
+  .transport .mbtn, .transport .mbtn.play { min-width: 0; width: 100%; min-height: 48px; }
+  .lcd { grid-template-columns: 1fr; grid-template-areas: "flags" "title" "time" "format"; padding: 10px; }
+  .lcd .format { justify-content: flex-start; }
+  .lcd .seg svg { height: 36px; }
+  .volume { grid-template-columns: auto 1fr auto; align-items: center; justify-items: start; gap: 12px; }
+  .knob { width: 64px; height: 64px; }
+  .knob .pointer { height: 26px; }
+  .row2 { grid-template-columns: minmax(0, 1fr); }
+  .eq-body { grid-template-columns: minmax(0, 1fr); }
+  .eq-side { grid-template-columns: 1fr 1fr; }
+  .faders { gap: 2px; }
+  .fader .track { height: 96px; }
+  .fader .track::after { width: 18px; }
+  .pl-tools { grid-template-columns: 1fr; }
+  .pl-actions { justify-content: stretch; display: grid; grid-template-columns: repeat(4, 1fr); }
+  .pl-actions .mbtn { padding: 0 6px; font-size: 11px; }
+  .pl-actions .mbtn .word { display: none; }
+  .track { grid-template-columns: 20px 1fr 48px 36px; }
+  .track .no, .track .fmt { display: none; }
+  .states, .states-grid { grid-template-columns: minmax(0, 1fr); }
+}
+</style>
+</head>
+<body>
+
+<main class="rack" aria-label="Player">
+
+  <section class="panel deck" aria-label="Main deck"><span class="screw-b"></span>
+    <div class="panel-head">
+      <span class="label">Deck</span>
+      <div class="skins" role="group" aria-label="Skin">
+        <span class="label">Skin</span>
+        <button class="swatch titanium" aria-pressed="true" aria-label="Titanium" data-skin="titanium"></button>
+        <button class="swatch graphite" aria-pressed="false" aria-label="Graphite" data-skin="graphite"></button>
+        <button class="swatch champagne" aria-pressed="false" aria-label="Champagne" data-skin="champagne"></button>
+      </div>
+    </div>
+    <div class="deck-grid">
+      <div class="transport" role="group" aria-label="Transport">
+        <button class="mbtn" aria-label="Previous"><svg viewBox="0 0 16 16"><path d="M3 3h2.4v10H3zM13 3L6.2 8 13 13z"/></svg></button>
+        <button class="mbtn play" aria-label="Pause" aria-pressed="true"><svg viewBox="0 0 16 16"><path d="M3.5 2.5h3.4v11H3.5zM9.1 2.5h3.4v11H9.1z"/></svg></button>
+        <button class="mbtn" aria-label="Stop"><svg viewBox="0 0 16 16"><path d="M3 3h10v10H3z"/></svg></button>
+        <button class="mbtn" aria-label="Next"><svg viewBox="0 0 16 16"><path d="M13 3h-2.4v10H13zM3 3l6.8 5L3 13z"/></svg></button>
+        <button class="mbtn" aria-label="Open files or folder"><svg viewBox="0 0 16 16"><path d="M1.5 4a1 1 0 0 1 1-1h3.6l1.4 1.5h6a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1z"/></svg></button>
+      </div>
+
+      <div class="lcd" role="status" aria-live="polite">
+        <div class="flags"><span class="on">PLAY</span><span class="on">SHUF</span><span class="on">RPT ALL</span><span class="on">EQ</span><span>MUTE</span><span class="trackno">07/12</span></div>
+        <div class="title"><span class="marquee">Dial-Up Heart — The Velvet Modems — Screensaver Love (2001)</span></div>
+        <div class="time">
+          <span class="seg" data-seg="02:41" aria-label="Elapsed 2 minutes 41 seconds"></span>
+          <span class="remaining">REMAIN <span class="seg small" data-seg="-01:52" aria-label="Remaining 1 minute 52 seconds"></span></span>
+        </div>
+        <div class="format"><b>MP3</b><b>192 KBPS</b><b>44.1 KHZ</b><b>STEREO</b></div>
+      </div>
+
+      <div class="seek">
+        <div class="groove" role="slider" aria-label="Seek" aria-valuemin="0" aria-valuemax="273" aria-valuenow="161" tabindex="0" style="--v:59%">
+          <span class="fill"></span><span class="cap"></span>
+        </div>
+      </div>
+
+      <div class="volume">
+        <button class="knob" role="slider" aria-label="Volume" aria-valuemin="0" aria-valuemax="100" aria-valuenow="72" style="--deg:120deg"><span class="pointer"></span></button>
+        <span class="readout">VOL 72</span>
+        <button class="mbtn" aria-pressed="false">Mute <span class="led"></span></button>
+      </div>
+    </div>
+  </section>
+
+  <div class="row2">
+    <section class="panel eq" aria-label="Equaliser"><span class="screw-b"></span>
+      <div class="panel-head">
+        <span class="label">Equaliser</span>
+        <button class="mbtn" aria-pressed="true">On <span class="led"></span></button>
+      </div>
+      <div class="eq-body">
+        <div class="eq-side">
+          <select class="select" aria-label="Preset">
+            <option>Rock</option><option>Flat</option><option>Pop</option><option>Bass boost</option><option>Treble</option><option>Classical</option><option>Vocal</option><option>Dance</option><option>Custom</option>
+          </select>
+          <button class="mbtn">Reset</button>
+        </div>
+        <div class="faders" role="group" aria-label="Bands">
+          <div class="fader preamp"><span class="db">+2</span><button class="track" role="slider" aria-label="Preamp" aria-valuemin="-12" aria-valuemax="12" aria-valuenow="2" style="--v:.58"><span></span></button><span class="hz">PRE</span></div>
+          <div class="fader"><span class="db">+5</span><button class="track" role="slider" aria-label="31 Hz" aria-valuemin="-12" aria-valuemax="12" aria-valuenow="5" style="--v:.71"><span></span></button><span class="hz">31</span></div>
+          <div class="fader"><span class="db">+4</span><button class="track" role="slider" aria-label="62 Hz" aria-valuemin="-12" aria-valuemax="12" aria-valuenow="4" style="--v:.67"><span></span></button><span class="hz">62</span></div>
+          <div class="fader"><span class="db">+2</span><button class="track" role="slider" aria-label="125 Hz" aria-valuemin="-12" aria-valuemax="12" aria-valuenow="2" style="--v:.58"><span></span></button><span class="hz">125</span></div>
+          <div class="fader"><span class="db">0</span><button class="track" role="slider" aria-label="250 Hz" aria-valuemin="-12" aria-valuemax="12" aria-valuenow="0" style="--v:.5"><span></span></button><span class="hz">250</span></div>
+          <div class="fader"><span class="db">-2</span><button class="track" role="slider" aria-label="500 Hz" aria-valuemin="-12" aria-valuemax="12" aria-valuenow="-2" style="--v:.42"><span></span></button><span class="hz">500</span></div>
+          <div class="fader"><span class="db">-1</span><button class="track" role="slider" aria-label="1 kHz" aria-valuemin="-12" aria-valuemax="12" aria-valuenow="-1" style="--v:.46"><span></span></button><span class="hz">1k</span></div>
+          <div class="fader"><span class="db">+1</span><button class="track" role="slider" aria-label="2 kHz" aria-valuemin="-12" aria-valuemax="12" aria-valuenow="1" style="--v:.54"><span></span></button><span class="hz">2k</span></div>
+          <div class="fader"><span class="db">+3</span><button class="track" role="slider" aria-label="4 kHz" aria-valuemin="-12" aria-valuemax="12" aria-valuenow="3" style="--v:.62"><span></span></button><span class="hz">4k</span></div>
+          <div class="fader"><span class="db">+4</span><button class="track" role="slider" aria-label="8 kHz" aria-valuemin="-12" aria-valuemax="12" aria-valuenow="4" style="--v:.67"><span></span></button><span class="hz">8k</span></div>
+          <div class="fader"><span class="db">+4</span><button class="track" role="slider" aria-label="16 kHz" aria-valuemin="-12" aria-valuemax="12" aria-valuenow="4" style="--v:.67"><span></span></button><span class="hz">16k</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel viz" aria-label="Visualiser"><span class="screw-b"></span>
+      <div class="panel-head">
+        <span class="label">Visualiser</span>
+        <div class="modes" role="group" aria-label="Mode">
+          <button class="mbtn" aria-pressed="true" data-mode="spectrum">Spectrum</button>
+          <button class="mbtn" aria-pressed="false" data-mode="scope">Scope</button>
+        </div>
+      </div>
+      <div class="viz-body">
+        <div class="glass">
+          <canvas id="viz" aria-label="Spectrum analyser" role="img"></canvas>
+          <div class="scale"><span>31</span><span>125</span><span>500</span><span>2k</span><span>8k</span><span>16k</span></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel playlist" aria-label="Playlist"><span class="screw-b"></span>
+    <div class="panel-head">
+      <span class="label">Playlist</span>
+      <span class="label" style="letter-spacing:.06em">Screensaver Love — 12 tracks</span>
+    </div>
+    <div class="pl-tools">
+      <label class="search">
+        <svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/></svg>
+        <input type="search" placeholder="Search playlist" aria-label="Search playlist">
+      </label>
+      <div class="pl-actions">
+        <button class="mbtn" aria-pressed="true"><svg viewBox="0 0 16 16"><path d="M2 4h3l6 8h3v2h-4L4 6H2zM2 12h3l1.5-2 1.2 1.6L6 14H2zM11 2h3v2h-3l-1.7 2.3L8.1 4.7z"/></svg><span class="word">Shuffle</span> <span class="led"></span></button>
+        <button class="mbtn" aria-pressed="true"><svg viewBox="0 0 16 16"><path d="M3 7V5h8V2.5L14.5 6 11 9.5V7H5v3h2v2H3zM13 9v2H5v2.5L1.5 10 5 6.5V9z"/></svg><span class="word">Repeat</span> <span class="led"></span></button>
+        <button class="mbtn"><svg viewBox="0 0 16 16"><path d="M7 2h2v5h5v2H9v5H7V9H2V7h5z"/></svg><span class="word">Add</span></button>
+        <button class="mbtn"><svg viewBox="0 0 16 16"><path d="M3 4h10v1.5H3zM4.5 6.5h7L11 14H5zM6 2h4v1.5H6z"/></svg><span class="word">Clear</span></button>
+      </div>
+    </div>
+    <div class="glass tracks">
+      <ol id="tracks"></ol>
+    </div>
+    <div class="pl-foot"><span>12 TRACKS · 48:12 TOTAL</span><span>DRAG ROWS TO REORDER · DEL REMOVES</span></div>
+  </section>
+
+  <footer class="credit">
+    <svg viewBox="0 0 18 20" aria-hidden="true"><path fill="currentColor" d="M2 2.5h9a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H8v4H6v-4H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1z"/><path fill="currentColor" d="M12.2 3.2l3 1.2v2.8l-3 1.2z"/><rect x="1.5" y="13" width="15" height="6" rx="1" fill="none" stroke="currentColor" stroke-width="1.2"/><text x="9" y="17.8" text-anchor="middle" font-size="4.6" font-weight="700" font-family="system-ui, sans-serif" fill="currentColor">FREE</text></svg>
+    <span>A free tool by <a href="https://maksforge.com">MaksForge</a> · plays your files locally, nothing is uploaded</span>
+  </footer>
+</main>
+
+<section class="states" aria-label="Other states (for design review)">
+  <h2>Empty state</h2>
+  <div class="states-grid">
+    <section class="panel"><span class="screw-b"></span>
+      <div class="panel-head"><span class="label">Deck</span></div>
+      <div class="lcd idle" style="margin:0 8px">
+        <div class="flags"><span>PLAY</span><span>SHUF</span><span>RPT</span><span class="on">EQ</span><span>MUTE</span><span class="trackno">--/--</span></div>
+        <div class="title"><span class="marquee">NO MEDIA · DROP OR OPEN</span></div>
+        <div class="time"><span class="seg" data-seg="--:--"></span></div>
+        <div class="format"><b>---</b><b>--- KBPS</b></div>
+      </div>
+    </section>
+    <section class="panel"><span class="screw-b"></span>
+      <div class="panel-head"><span class="label">Playlist</span></div>
+      <div class="glass empty-target">
+        <div class="dash">
+          <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 6v18M12 16l8 8 8-8" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="M6 26v6a2 2 0 0 0 2 2h24a2 2 0 0 0 2-2v-6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+          <p>Drop audio files or a folder here</p>
+          <small>MP3, FLAC, OGG, WAV, M4A · stays on this device</small>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button class="mbtn">Open files</button><button class="mbtn">Open folder</button></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <h2>Drag-over state</h2>
+  <section class="panel dragover" style="min-height:220px"><span class="screw-b"></span>
+    <div class="panel-head"><span class="label">Playlist</span><span class="label" style="letter-spacing:.06em">12 tracks</span></div>
+    <div class="glass tracks" style="min-height:150px"></div>
+    <div class="drop-overlay"><div><b>Drop to add 14 files</b><span>They go to the end of the playlist</span></div></div>
+  </section>
+</section>
+
+<script>
+(function () {
+  const SEG = { a: [0,2,3,5,6,7,8,9], b: [0,1,2,3,4,7,8,9], c: [0,1,3,4,5,6,7,8,9], d: [0,2,3,5,6,8,9], e: [0,2,6,8], f: [0,4,5,6,8,9], g: [2,3,4,5,6,8,9] };
+  const RECT = { a: 'x="3" y="0" width="10" height="3"', b: 'x="13" y="2" width="3" height="10"', c: 'x="13" y="14" width="3" height="10"', d: 'x="3" y="23" width="10" height="3"', e: 'x="0" y="14" width="3" height="10"', f: 'x="0" y="2" width="3" height="10"', g: 'x="3" y="11.5" width="10" height="3"' };
+  function digit(ch) {
+    if (ch === ':') return '<svg viewBox="0 0 6 26"><rect x="1.5" y="6" width="3" height="3" rx=".5"/><rect x="1.5" y="17" width="3" height="3" rx=".5"/></svg>';
+    const n = ch === '-' ? -1 : (ch === '.' ? -2 : +ch);
+    const on = ch === '-' ? ['g'] : Object.keys(SEG).filter(s => SEG[s].includes(n));
+    const rects = Object.keys(RECT).map(s => `<rect ${RECT[s]} rx=".7" opacity="${on.includes(s) ? 1 : 'var(--ghost, .13)'}"/>`).join('');
+    return `<svg viewBox="0 0 16 26" style="fill:currentColor">${rects}</svg>`;
+  }
+  document.querySelectorAll('[data-seg]').forEach(el => { el.innerHTML = [...el.dataset.seg].map(digit).join(''); });
+  document.querySelectorAll('.seg svg rect[opacity^="var"]').forEach(r => r.setAttribute('opacity', '.13'));
+
+  const tracks = [
+    ['Pentium Summer', 'The Velvet Modems', 'MP3 192', '3:58'],
+    ['Burned CD 03', 'Cassette Weather', 'MP3 160', '4:12'],
+    ['Milk Carton Radio', 'Nina Vaskova', 'FLAC', '3:21'],
+    ['Floppy Disk Blues', 'Low Orbit Picnic', 'MP3 128', '2:49'],
+    ['Static on FM', 'Dial Tone Choir', 'OGG q6', '5:04'],
+    ['Minidisc Mornings', 'Cassette Weather', 'MP3 192', '3:37'],
+    ['Dial-Up Heart', 'The Velvet Modems', 'MP3 192', '4:33'],
+    ['Broadband Dreams', 'Orbital Lullaby Dept.', 'MP3 320', '4:01'],
+    ['Screensaver Love', 'The Velvet Modems', 'MP3 192', '3:44'],
+    ['Infrared Port', 'Nina Vaskova', 'FLAC', '4:50'],
+    ['Buffering…', 'Low Orbit Picnic', 'MP3 128', '3:12'],
+    ['Last Train to Y2K', 'Dial Tone Choir', 'OGG q6', '4:51'],
+  ];
+  const ol = document.getElementById('tracks');
+  ol.innerHTML = tracks.map((t, i) => `
+    <li class="track${i === 6 ? ' current' : ''}" draggable="true" ${i === 6 ? 'aria-current="true"' : ''}>
+      <span class="grip" aria-hidden="true"><i></i></span>
+      <span class="no">${String(i + 1).padStart(2, '0')}</span>
+      <span class="meta"><span class="t">${t[0]}</span><span class="a">${t[1]}</span></span>
+      <span class="fmt">${t[2]}</span>
+      <span class="dur">${t[3]}</span>
+      <button class="rm" aria-label="Remove ${t[0]}"><svg viewBox="0 0 16 16"><path d="M3 3l10 10M13 3L3 13"/></svg></button>
+    </li>`).join('');
+
+  document.querySelectorAll('.swatch').forEach(b => b.addEventListener('click', () => {
+    document.documentElement.dataset.skin = b.dataset.skin;
+    document.querySelectorAll('.swatch').forEach(x => x.setAttribute('aria-pressed', x === b));
+    draw();
+  }));
+
+  const canvas = document.getElementById('viz');
+  const ctx = canvas.getContext('2d');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let mode = 'spectrum', t = 0;
+  document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => {
+    mode = b.dataset.mode;
+    document.querySelectorAll('[data-mode]').forEach(x => x.setAttribute('aria-pressed', x === b));
+    draw();
+  }));
+  const bars = Array.from({ length: 28 }, (_, i) => 0.25 + 0.6 * Math.abs(Math.sin(i * 0.9 + 1)) * (1 - i / 40));
+  function draw() {
+    const dpr = devicePixelRatio || 1, w = canvas.clientWidth, h = canvas.clientHeight;
+    if (canvas.width !== w * dpr) { canvas.width = w * dpr; canvas.height = h * dpr; }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    const cs = getComputedStyle(document.documentElement);
+    const col = cs.getPropertyValue('--viz').trim(), peak = cs.getPropertyValue('--viz-peak').trim();
+    ctx.strokeStyle = 'rgba(255,255,255,.06)';
+    for (let y = 10; y < h - 14; y += 12) { ctx.beginPath(); ctx.moveTo(8, y); ctx.lineTo(w - 8, y); ctx.stroke(); }
+    if (mode === 'spectrum') {
+      const n = bars.length, gap = 3, bw = (w - 20 - gap * (n - 1)) / n;
+      for (let i = 0; i < n; i++) {
+        const v = Math.max(0.04, Math.min(0.95, bars[i] + 0.12 * Math.sin(t * 0.07 + i * 1.3)));
+        const bh = v * (h - 30), x = 10 + i * (bw + gap), y = h - 16 - bh;
+        ctx.fillStyle = col;
+        for (let s = 0; s < bh; s += 5) ctx.fillRect(x, h - 16 - s - 3, bw, 3);
+        ctx.fillStyle = peak; ctx.fillRect(x, y - 7, bw, 2);
+      }
+    } else {
+      ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.shadowColor = col; ctx.shadowBlur = 6; ctx.beginPath();
+      for (let x = 0; x <= w; x += 2) {
+        const p = x / w * Math.PI * 6 + t * 0.1;
+        const y = h / 2 - 8 + Math.sin(p) * 28 * Math.sin(p * 0.37 + 1) + Math.sin(p * 3.1) * 7;
+        x ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+      }
+      ctx.stroke(); ctx.shadowBlur = 0;
+    }
+  }
+  function loop() { t++; draw(); if (!reduce) requestAnimationFrame(loop); }
+  loop();
+  addEventListener('resize', draw);
+})();
+</script>
+</body>
+</html>

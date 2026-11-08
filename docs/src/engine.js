@@ -1,6 +1,7 @@
 import { BAND_FREQUENCIES, dbToLinear, headroomDb } from './equalizer.js';
 
 const BAND_Q = 1.2;
+const RESUME_LIMIT_MS = 3000;
 
 export class AudioEngine {
   #context = null;
@@ -14,11 +15,15 @@ export class AudioEngine {
   constructor(audio) {
     this.audio = audio;
     this.analyser = null;
+    this.noOutput = false;
   }
 
   async start() {
     if (!this.#context) this.#build();
-    if (this.#context.state === 'suspended') await this.#context.resume();
+    this.noOutput = false;
+    if (this.#context.state !== 'suspended') return;
+    const limit = new Promise((resolve) => setTimeout(resolve, RESUME_LIMIT_MS, false));
+    this.noOutput = !(await Promise.race([this.#context.resume().then(() => true), limit]));
   }
 
   get context() {

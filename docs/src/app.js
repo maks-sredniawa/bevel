@@ -607,6 +607,7 @@ async function play() {
   if (loadedId !== track.id) loadTrack(track);
   try {
     await engine.start();
+    if (engine.noOutput) setStatus('No sound output found. Check your speakers or headphones.');
     await audio.play();
   } catch (error) {
     if (error.name !== 'AbortError') setStatus(`Could not play ${track.title}`);

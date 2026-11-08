@@ -809,6 +809,7 @@ function setCompact(on) {
 }
 
 function setMini(on) {
+  miniWindow?.close();
   settings.mini = on;
   byId('app').classList.toggle('mini', on);
   saveSettings();

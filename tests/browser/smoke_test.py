@@ -20,6 +20,14 @@ SITE_POLICY = (
     "base-uri 'self'; form-action 'none'; frame-ancestors 'none'"
 )
 POLICY = os.environ.get('BEVEL_CSP', SITE_POLICY)
+STALLED_CONTEXT = """
+Object.defineProperty(AudioContext.prototype, 'state', { get: () => 'suspended' });
+AudioContext.prototype.resume = () => new Promise(() => {});
+"""
+AUDIO_STATE = """(() => {
+  const audio = document.getElementById('audio');
+  return { paused: audio.paused, time: audio.currentTime, ready: audio.readyState, network: audio.networkState, duration: audio.duration, error: audio.error?.message ?? null };
+})()"""
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -66,15 +74,54 @@ def check(driver, name, song):
     page.set_input_files('#file-input', str(song))
     wait_until(page, "document.querySelectorAll('#tracks .row').length === 1")
     page.click('#play')
-    wait_until(page, "document.getElementById('audio').currentTime > 0.5")
+    plays = name not in os.environ.get('BEVEL_NO_AUDIO', '').split()
+    try:
+        wait_until(page, "document.getElementById('audio').currentTime > 0.5" if plays else "document.getElementById('status').textContent.includes('No sound output')")
+    except TimeoutError as error:
+        audio = page.evaluate(AUDIO_STATE)
+        raise TimeoutError(f'{error}; audio element: {json.dumps(audio)}; page errors: {page_errors}') from error
     page.evaluate('retroDJ.enable(true)')
     page.wait_for_timeout(500)
     enabled = page.evaluate('retroDJ.state().enabled')
+    page.evaluate('retroDJ.enable(false)')
+    page.evaluate("Object.defineProperty(window, 'documentPictureInPicture', { value: undefined })")
+    page.click('#mini-toggle')
+    wait_until(page, "document.getElementById('app').classList.contains('mini')")
+    mini = {'strip_shown': page.is_visible('#mini'), 'full_player_hidden': not page.is_visible('.work')}
+    mini['label'] = page.inner_text('#mini-marquee')
+    mini['focus_moved_in'] = page.evaluate("document.activeElement.id") == 'mini-play'
+    if plays:
+        page.click('#mini-play')
+        wait_until(page, "document.getElementById('audio').paused")
+        page.click('#mini-play')
+        wait_until(page, "!document.getElementById('audio').paused")
+    page.click('#mini-next')
+    page.click('#mini-prev')
+    page.click('#mini-restore')
+    wait_until(page, "!document.getElementById('app').classList.contains('mini')")
+    mini['full_player_back'] = page.is_visible('.work')
+    mini['focus_moved_back'] = page.evaluate("document.activeElement.id") == 'mini-toggle'
     browser.close()
     blocked = [text for text in console_errors if 'Content Security Policy' in text or 'Content-Security-Policy' in text]
-    ok = title == 'Bevel' and enabled and not page_errors and not outside and not failed and not blocked
-    print(json.dumps({'browser': name, 'ok': ok, 'page_errors': page_errors, 'blocked': blocked, 'outside': outside, 'failed': failed}, indent=1), flush=True)
+    mini_ok = all(mini.values())
+    ok = title == 'Bevel' and enabled and mini_ok and not page_errors and not outside and not failed and not blocked
+    print(json.dumps({'browser': name, 'ok': ok, 'mini': mini, 'page_errors': page_errors, 'blocked': blocked, 'outside': outside, 'failed': failed}, indent=1), flush=True)
     return ok
+
+
+def check_stalled_output(driver, song):
+    browser = driver.chromium.launch(headless=True, channel=os.environ.get('BROWSER_CHANNEL'))
+    page = browser.new_context(viewport={'width': 1280, 'height': 900}).new_page()
+    page.add_init_script(STALLED_CONTEXT)
+    page.goto(BASE + 'index.html')
+    wait_until(page, 'window.retroDJ !== undefined')
+    page.set_input_files('#file-input', str(song))
+    wait_until(page, "document.querySelectorAll('#tracks .row').length === 1")
+    page.click('#play')
+    wait_until(page, "document.getElementById('status').textContent.includes('No sound output')", seconds=10)
+    browser.close()
+    print(json.dumps({'check': 'stalled audio output reports a message', 'ok': True}), flush=True)
+    return True
 
 
 def main():
@@ -89,6 +136,12 @@ def main():
                 results.append(check(driver, name, song))
             except Exception as error:
                 print(json.dumps({'browser': name, 'ok': False, 'error': str(error)[:600]}, indent=1), flush=True)
+                results.append(False)
+        if 'chromium' in (sys.argv[1:] or ['chromium']):
+            try:
+                results.append(check_stalled_output(driver, song))
+            except Exception as error:
+                print(json.dumps({'check': 'stalled audio output reports a message', 'ok': False, 'error': str(error)[:600]}), flush=True)
                 results.append(False)
     server.shutdown()
     sys.exit(0 if all(results) else 1)

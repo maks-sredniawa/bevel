@@ -257,6 +257,28 @@ svg { display: block; shape-rendering: crispEdges; }
 .app.compact { max-width: 540px; }
 .app.compact .work { grid-template-columns: minmax(0, 1fr); }
 .app.compact .hide-compact { display: none; }
+.mini-strip { display: none; gap: 4px; align-items: stretch; min-height: 44px; }
+.app.mini { max-width: 360px; }
+.app.mini > :not(.mini-strip) { display: none; }
+.app.mini .mini-strip { display: flex; }
+.mini-strip .btn { flex: none; min-width: 44px; min-height: 44px; padding: 0; }
+.mini-strip .btn.play { min-width: 52px; }
+.mini-strip .btn.play svg { width: 16px; height: 16px; }
+.mini-strip .btn.restore { min-width: 40px; }
+.mini-strip .btn.restore svg { width: 12px; height: 12px; }
+.mini-lcd { flex: 1; min-width: 0; display: flex; align-items: center; padding: 0 8px; }
+.mini-lcd .title { width: 100%; font-size: 13px; letter-spacing: .04em; }
+.mini-lcd::before { content: ""; position: absolute; left: 0; bottom: 0; height: 3px; width: var(--v, 0%); background: var(--lcd-ink); opacity: .85; }
+.mini-lcd.idle::before { width: 0; }
+body.pip { padding: 0; min-height: 0; overflow: hidden; }
+body.pip .app.mini { max-width: none; height: 100vh; }
+body.pip .mini-strip { height: 100%; }
+@media (max-width: 300px) {
+  .mini-strip { gap: 2px; }
+  .mini-strip .btn.play { min-width: 44px; }
+  .mini-lcd { padding: 0 5px; }
+  body.pip .mini-strip .restore { display: none; }
+}
 
 dialog { max-width: 460px; padding: 0; color: var(--ink); background: var(--face); }
 dialog::backdrop { background: rgba(0, 0, 0, .45); }

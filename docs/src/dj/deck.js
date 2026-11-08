@@ -58,6 +58,7 @@ export class Deck {
   #context;
   #source = null;
   #startedAt = 0;
+  #echoEndsAt = 0;
   #offset = 0;
   #rate = 1;
   #bands;
@@ -311,6 +312,7 @@ export class Deck {
     this.#echoSend.gain.setValueAtTime(1, now);
     this.#echoSend.gain.setValueAtTime(1, now + this.beatSeconds);
     this.#echoSend.gain.linearRampToValueAtTime(0, now + this.beatSeconds * 1.25);
+    this.#echoEndsAt = now + this.beatSeconds * 1.25;
     setTimeout(() => this.pause(), this.beatSeconds * 1000);
     return ECHO_TAIL_SECONDS;
   }
@@ -339,7 +341,15 @@ export class Deck {
     this.#bands[band].gain.setTargetAtTime(db, this.#context.currentTime, SMOOTHING_SECONDS);
   }
 
+  #closeFinishedEcho() {
+    const now = this.#context.currentTime;
+    if (now < this.#echoEndsAt) return;
+    this.#echoSend.gain.cancelScheduledValues(now);
+    this.#echoSend.gain.setValueAtTime(0, now);
+  }
+
   #start(offset) {
+    this.#closeFinishedEcho();
     const source = this.#context.createBufferSource();
     source.buffer = this.buffer;
     source.playbackRate.value = this.#rate;

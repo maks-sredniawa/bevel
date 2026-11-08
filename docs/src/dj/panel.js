@@ -25,7 +25,7 @@ export function bindPanel({ dj, getActivePlaylist, setRowDecks }) {
   const peakTitle = { a: null, b: null };
   const cuePoint = { a: 0, b: 0 };
   const loopBars = { a: null, b: null };
-  const dragging = new Set();
+  const dragging = new Map();
   let frame = null;
 
   const el = (deck, name) => byId(`deck-${deck}-${name}`);
@@ -203,10 +203,19 @@ export function bindPanel({ dj, getActivePlaylist, setRowDecks }) {
   }
 
   function bindRange(input, onChange) {
-    input.addEventListener('pointerdown', () => dragging.add(input));
-    input.addEventListener('pointerup', () => dragging.delete(input));
+    input.addEventListener('pointerdown', (event) => {
+      if (!dragging.has(input)) dragging.set(input, event.pointerId);
+    });
     input.addEventListener('input', () => run(() => onChange(Number(input.value))));
   }
+
+  const stopDragging = (event) => {
+    dragging.forEach((pointerId, input) => {
+      if (pointerId === event.pointerId) dragging.delete(input);
+    });
+  };
+  window.addEventListener('pointerup', stopDragging);
+  window.addEventListener('pointercancel', stopDragging);
 
   DECKS.forEach((deck) => {
     el(deck, 'play').addEventListener('click', () => run(() => (dj.state()[deck].playing ? dj.pause(deck) : dj.play(deck))));

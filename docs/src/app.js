@@ -1272,9 +1272,18 @@ function bindTransport() {
   byId('prev').addEventListener('click', previous);
 
   const seek = byId('seek');
-  seek.addEventListener('pointerdown', () => {
+  let seekDragPointer = null;
+  seek.addEventListener('pointerdown', (event) => {
     seekDragging = true;
+    seekDragPointer ??= event.pointerId;
   });
+  const stopSeekDragging = (event) => {
+    if (event.pointerId !== seekDragPointer) return;
+    seekDragPointer = null;
+    seekDragging = false;
+  };
+  window.addEventListener('pointerup', stopSeekDragging);
+  window.addEventListener('pointercancel', stopSeekDragging);
   seek.addEventListener('input', () => {
     seekDragging = true;
     renderTime();

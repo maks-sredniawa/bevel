@@ -1,0 +1,8 @@
+remote_theme: maks-sredniawa/pages-theme
+plugins:
+  - jekyll-remote-theme
+title: Bevel
+description: A free music player in your browser, in the style of the early 2000s.
+maksforge:
+  icon: /assets/icons/bevel.webp
+  status: live

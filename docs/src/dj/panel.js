@@ -204,9 +204,11 @@ export function bindPanel({ dj, getActivePlaylist, setRowDecks }) {
 
   function bindRange(input, onChange) {
     input.addEventListener('pointerdown', () => dragging.add(input));
-    input.addEventListener('pointerup', () => dragging.delete(input));
     input.addEventListener('input', () => run(() => onChange(Number(input.value))));
   }
+
+  window.addEventListener('pointerup', () => dragging.clear());
+  window.addEventListener('pointercancel', () => dragging.clear());
 
   DECKS.forEach((deck) => {
     el(deck, 'play').addEventListener('click', () => run(() => (dj.state()[deck].playing ? dj.pause(deck) : dj.play(deck))));

@@ -1275,6 +1275,11 @@ function bindTransport() {
   seek.addEventListener('pointerdown', () => {
     seekDragging = true;
   });
+  const stopSeekDragging = () => {
+    seekDragging = false;
+  };
+  window.addEventListener('pointerup', stopSeekDragging);
+  window.addEventListener('pointercancel', stopSeekDragging);
   seek.addEventListener('input', () => {
     seekDragging = true;
     renderTime();

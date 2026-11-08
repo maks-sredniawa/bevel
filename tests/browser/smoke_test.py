@@ -24,6 +24,7 @@ STALLED_CONTEXT = """
 Object.defineProperty(AudioContext.prototype, 'state', { get: () => 'suspended' });
 AudioContext.prototype.resume = () => new Promise(() => {});
 """
+SEEK_RATIO = "(() => { const seek = document.getElementById('seek'); return Number(seek.value) / Number(seek.max); })()"
 AUDIO_STATE = """(() => {
   const audio = document.getElementById('audio');
   return { paused: audio.paused, time: audio.currentTime, ready: audio.readyState, network: audio.networkState, duration: audio.duration, error: audio.error?.message ?? null };
@@ -59,6 +60,19 @@ def wait_until(page, expression, seconds=20):
         page.wait_for_timeout(100)
 
 
+def check_handle_keeps_following(page):
+    page.evaluate("document.getElementById('audio').pause()")
+    page.wait_for_timeout(300)
+    box = page.locator('#seek').bounding_box()
+    ratio = page.evaluate(SEEK_RATIO)
+    page.mouse.move(box['x'] + 9 + (box['width'] - 18) * ratio, box['y'] + box['height'] / 2)
+    page.mouse.down()
+    page.mouse.up()
+    before = page.evaluate("Number(document.getElementById('seek').value)")
+    page.evaluate("document.getElementById('audio').play()")
+    wait_until(page, f"Number(document.getElementById('seek').value) > {before + 1}", seconds=10)
+
+
 def check(driver, name, song):
     browser = getattr(driver, name).launch(headless=True, channel=os.environ.get('BROWSER_CHANNEL'))
     context = browser.new_context(viewport={'width': 1280, 'height': 900})
@@ -80,6 +94,8 @@ def check(driver, name, song):
     except TimeoutError as error:
         audio = page.evaluate(AUDIO_STATE)
         raise TimeoutError(f'{error}; audio element: {json.dumps(audio)}; page errors: {page_errors}') from error
+    if plays:
+        check_handle_keeps_following(page)
     page.evaluate('retroDJ.enable(true)')
     page.wait_for_timeout(500)
     enabled = page.evaluate('retroDJ.state().enabled')

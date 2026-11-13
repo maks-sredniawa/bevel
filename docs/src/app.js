@@ -777,9 +777,13 @@ function applyLevel({ smooth = false } = {}) {
   engine.setLevel(settings.levelling && track ? levelGainDb(track.loudness) : 0, { smooth });
 }
 
+function inAnyPlaylist(track) {
+  return playlists.some((record) => record.list.tracks.includes(track));
+}
+
 async function measureNextLevel() {
   const track = levelQueue.shift();
-  if (track.loudness !== undefined || tooLongToLevel(track.duration, track.file.size)) return;
+  if (track.loudness !== undefined || !inAnyPlaylist(track) || tooLongToLevel(track.duration, track.file.size)) return;
   try {
     track.loudness = await measureFile(track.file);
   } catch {
@@ -797,7 +801,7 @@ async function pumpLevelling() {
 }
 
 function queueLevelling(tracks, { first = false } = {}) {
-  const waiting = tracks.filter((track) => track.probed && track.loudness === undefined);
+  const waiting = tracks.filter((track) => track.probed && track.loudness === undefined && inAnyPlaylist(track));
   if (first) levelQueue.unshift(...waiting);
   else levelQueue.push(...waiting);
   pumpLevelling();

@@ -2,10 +2,12 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 let behaviour = 'reply';
+const workers = [];
 
 class FakeWorker {
   constructor() {
     this.terminated = false;
+    workers.push(this);
   }
 
   postMessage({ id }) {
@@ -48,4 +50,20 @@ test('a worker that never answers gives up after thirty seconds', async (t) => {
   const measuring = measureBuffer(buffer);
   t.mock.timers.tick(30000);
   assert.deepEqual(await measuring, UNMEASURED);
+});
+
+test('a hung worker is stopped on timeout, every waiting song is left unmeasured and the next one gets a fresh worker', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  behaviour = 'hang';
+  const first = measureBuffer(buffer);
+  t.mock.timers.tick(10000);
+  const second = measureBuffer(buffer);
+  const hung = workers.at(-1);
+  t.mock.timers.tick(20000);
+  const stillWaiting = new Promise((resolve) => setImmediate(() => resolve('still waiting')));
+  assert.deepEqual(await Promise.race([Promise.all([first, second]), stillWaiting]), [UNMEASURED, UNMEASURED]);
+  assert.equal(hung.terminated, true);
+  behaviour = 'reply';
+  assert.deepEqual(await measureBuffer(buffer), { lufs: -14, peak: 0.9 });
+  assert.notEqual(workers.at(-1), hung);
 });

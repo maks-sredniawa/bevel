@@ -34,6 +34,25 @@ ANALYSER_HOOK = """
 const makeAnalyser = AudioContext.prototype.createAnalyser;
 AudioContext.prototype.createAnalyser = function () { window.__analyser = makeAnalyser.call(this); window.__rate = this.sampleRate; return window.__analyser; };
 """
+ECHO_SEND_HOOK = """
+const makeGain = AudioContext.prototype.createGain;
+const makeDelay = AudioContext.prototype.createDelay;
+let lastGain = null;
+AudioContext.prototype.createGain = function (...args) { lastGain = makeGain.apply(this, args); return lastGain; };
+AudioContext.prototype.createDelay = function (...args) { window.__echoSends = [...(window.__echoSends ?? []), lastGain]; return makeDelay.apply(this, args); };
+"""
+SLOW_PROBE_HOOK = """
+const RealAudio = window.Audio;
+window.Audio = function (...args) {
+  const element = new RealAudio(...args);
+  const listen = element.addEventListener.bind(element);
+  element.addEventListener = (type, listener, options) => listen(type, type === 'loadedmetadata' ? (event) => setTimeout(() => listener(event), 1500) : listener, options);
+  return element;
+};
+const decode = OfflineAudioContext.prototype.decodeAudioData;
+window.__levelDecodes = 0;
+OfflineAudioContext.prototype.decodeAudioData = function (...args) { window.__levelDecodes++; return decode.apply(this, args); };
+"""
 ANALYSER_SETUP = """(() => {
   window.__analyser.fftSize = 8192;
   window.__analyser.smoothingTimeConstant = 0;
@@ -185,6 +204,7 @@ def check_echo_closes(driver, folder):
     browser = driver.chromium.launch(headless=True, channel=os.environ.get('BROWSER_CHANNEL'), args=['--mute-audio'])
     page = browser.new_context(viewport={'width': 1280, 'height': 900}).new_page()
     page.add_init_script(ANALYSER_HOOK)
+    page.add_init_script(ECHO_SEND_HOOK)
     page.goto(BASE + 'index.html')
     wait_until(page, 'window.retroDJ !== undefined')
     page.set_input_files('#file-input', [str(first), str(second)])
@@ -202,6 +222,8 @@ def check_echo_closes(driver, folder):
     page.evaluate("retroDJ.load('a', 'Later')")
     wait_until(page, "retroDJ.state().a.track === 'Later' && !retroDJ.state().a.analysing", seconds=30)
     page.evaluate("retroDJ.play('a')")
+    # Chromium sometimes leaves this gain stuck at 1 after Echo Out; the closed echo must stay silent even then.
+    page.evaluate('window.__echoSends[0].gain.value = 1')
     page.wait_for_timeout(2000)
     playing_level = settled_tone_level(page)
     page.evaluate("retroDJ.pause('a')")
@@ -243,6 +265,29 @@ def check_levelling(driver, name, folder):
     return ok
 
 
+def check_cleared_songs_skip_levelling(driver, name, folder):
+    cleared, kept = pathlib.Path(folder) / 'Tester_-_Cleared.wav', pathlib.Path(folder) / 'Tester_-_Kept.wav'
+    tone_song(cleared, TONE_HZ)
+    tone_song(kept, TONE_HZ)
+    browser = getattr(driver, name).launch(headless=True, channel=os.environ.get('BROWSER_CHANNEL'), args=['--mute-audio'] if name == 'chromium' else [])
+    page = browser.new_context(viewport={'width': 1280, 'height': 900}).new_page()
+    page.add_init_script(SLOW_PROBE_HOOK)
+    page.goto(BASE + 'index.html')
+    wait_until(page, 'window.retroDJ !== undefined')
+    page.click('#level')
+    page.set_input_files('#file-input', str(cleared))
+    wait_until(page, "document.querySelectorAll('#tracks .row').length === 1")
+    page.click('#clear')
+    page.wait_for_timeout(3000)
+    cleared_decodes = page.evaluate('window.__levelDecodes')
+    page.set_input_files('#file-input', str(kept))
+    wait_until(page, 'window.__levelDecodes > 0', seconds=10)
+    browser.close()
+    ok = cleared_decodes == 0
+    print(json.dumps({'check': 'cleared songs are not levelled', 'browser': name, 'ok': ok, 'cleared_decodes': cleared_decodes}), flush=True)
+    return ok
+
+
 def check_skin_before_app(driver):
     browser = driver.chromium.launch(headless=True, channel=os.environ.get('BROWSER_CHANNEL'), args=['--mute-audio'])
     page = browser.new_context(viewport={'width': 1280, 'height': 900}, service_workers='block').new_page()
@@ -277,6 +322,11 @@ def main():
                 results.append(check_levelling(driver, name, work))
             except Exception as error:
                 print(json.dumps({'check': 'levelling evens out loud and quiet songs', 'browser': name, 'ok': False, 'error': str(error)[:600]}), flush=True)
+                results.append(False)
+            try:
+                results.append(check_cleared_songs_skip_levelling(driver, name, work))
+            except Exception as error:
+                print(json.dumps({'check': 'cleared songs are not levelled', 'browser': name, 'ok': False, 'error': str(error)[:600]}), flush=True)
                 results.append(False)
         if 'chromium' in (sys.argv[1:] or ['chromium']):
             try:

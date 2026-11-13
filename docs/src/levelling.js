@@ -14,13 +14,17 @@ function settle(id, result) {
   job.resolve(result);
 }
 
+function stopWorker() {
+  worker?.terminate();
+  worker = null;
+  [...jobs.keys()].forEach((id) => settle(id, UNMEASURED));
+}
+
 function startWorker() {
   const started = new Worker(new URL('./loudness-worker.js', import.meta.url), { type: 'module' });
   started.onmessage = ({ data: { id, lufs, peak } }) => settle(id, { lufs, peak });
   started.onerror = () => {
-    started.terminate();
-    if (worker === started) worker = null;
-    [...jobs.keys()].forEach((id) => settle(id, UNMEASURED));
+    if (worker === started) stopWorker();
   };
   return started;
 }
@@ -28,7 +32,7 @@ function startWorker() {
 export function measureBuffer(buffer) {
   return new Promise((resolve) => {
     const id = nextJob++;
-    jobs.set(id, { resolve, timer: setTimeout(() => settle(id, UNMEASURED), MEASURE_TIMEOUT_MS) });
+    jobs.set(id, { resolve, timer: setTimeout(stopWorker, MEASURE_TIMEOUT_MS) });
     try {
       worker ??= startWorker();
       const channels = Array.from({ length: Math.min(2, buffer.numberOfChannels) }, (_, index) => new Float32Array(buffer.getChannelData(index)));

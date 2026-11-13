@@ -64,6 +64,7 @@ export class Deck {
   #source = null;
   #startedAt = 0;
   #echoEndsAt = 0;
+  #echoOpen = false;
   #offset = 0;
   #rate = 1;
   #bands;
@@ -123,7 +124,7 @@ export class Deck {
 
     this.input.connect(low).connect(mid).connect(high).connect(this.#lowPass).connect(this.#highPass).connect(this.level);
     this.level.connect(this.crossfade).connect(output);
-    this.#highPass.connect(this.#echoSend).connect(this.#echoDelay);
+    this.#echoSend.connect(this.#echoDelay);
     this.#echoDelay.connect(feedback).connect(this.#echoDelay);
     this.#echoDelay.connect(this.crossfade);
     this.setFilter(0);
@@ -184,6 +185,7 @@ export class Deck {
     if (!this.playing) return;
     this.#offset = this.position;
     this.#release();
+    this.#closeEcho();
     this.playing = false;
   }
 
@@ -319,6 +321,7 @@ export class Deck {
 
   echoOut() {
     const now = this.#context.currentTime;
+    this.#openEcho();
     this.#echoDelay.delayTime.setValueAtTime(this.beatSeconds * ECHO_BEATS, now);
     this.#echoSend.gain.setValueAtTime(1, now);
     this.#echoSend.gain.setValueAtTime(1, now + this.beatSeconds);
@@ -352,16 +355,21 @@ export class Deck {
     this.#bands[band].gain.setTargetAtTime(db, this.#context.currentTime, SMOOTHING_SECONDS);
   }
 
-  // The ramp already ends at 0 by the Web Audio spec, but Chromium leaves the send open once its path goes silent.
-  #closeFinishedEcho() {
-    const now = this.#context.currentTime;
-    if (now < this.#echoEndsAt) return;
-    this.#echoSend.gain.cancelScheduledValues(now);
-    this.#echoSend.gain.setValueAtTime(0, now);
+  #openEcho() {
+    if (this.#echoOpen) return;
+    this.#echoOpen = true;
+    this.#highPass.connect(this.#echoSend);
+  }
+
+  // Chromium can leave the send's gain stuck at 1 after its input goes silent, so the echo is closed by unplugging the send.
+  #closeEcho() {
+    if (!this.#echoOpen) return;
+    this.#echoOpen = false;
+    this.#highPass.disconnect(this.#echoSend);
   }
 
   #start(offset) {
-    this.#closeFinishedEcho();
+    if (this.#context.currentTime >= this.#echoEndsAt) this.#closeEcho();
     const source = this.#context.createBufferSource();
     source.buffer = this.buffer;
     source.playbackRate.value = this.#rate;

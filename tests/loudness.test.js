@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { TARGET_LUFS, levelGainDb, measureLoudness } from '../docs/src/loudness.js';
+import { LEVEL_MAX_SECONDS, TARGET_LUFS, levelGainDb, measureLoudness, tooLongToLevel } from '../docs/src/loudness.js';
 
 const sine = (hz, dbfs, seconds, rate) => Float32Array.from({ length: rate * seconds }, (_, i) => 10 ** (dbfs / 20) * Math.sin(2 * Math.PI * hz * i / rate));
 
@@ -45,4 +45,17 @@ test('a quiet song is boosted only as far as its peak allows', () => {
 test('unmeasured songs are left at unity', () => {
   assert.equal(levelGainDb(undefined), 0);
   assert.equal(levelGainDb(null), 0);
+});
+
+test('songs over twenty minutes are too long to level', () => {
+  assert.equal(tooLongToLevel(LEVEL_MAX_SECONDS), false);
+  assert.equal(tooLongToLevel(LEVEL_MAX_SECONDS + 1), true);
+  assert.equal(tooLongToLevel(LEVEL_MAX_SECONDS + 1, 1024), true);
+});
+
+test('a song of unknown length falls back to its file size', () => {
+  assert.equal(tooLongToLevel(null, 40 * 1024 * 1024), false);
+  assert.equal(tooLongToLevel(null, 80 * 1024 * 1024), true);
+  assert.equal(tooLongToLevel(Infinity, 80 * 1024 * 1024), true);
+  assert.equal(tooLongToLevel(Number.NaN, 1024), false);
 });

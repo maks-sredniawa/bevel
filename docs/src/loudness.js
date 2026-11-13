@@ -1,4 +1,6 @@
 export const TARGET_LUFS = -16;
+export const LEVEL_MAX_SECONDS = 20 * 60;
+const LEVEL_MAX_BYTES_UNKNOWN_LENGTH = 60 * 1024 * 1024;
 const MAX_BOOST_DB = 12;
 const MAX_CUT_DB = -24;
 const PEAK_MARGIN_DB = 0.5;
@@ -78,4 +80,8 @@ export function levelGainDb(loudness, target = TARGET_LUFS) {
   let gain = target - loudness.lufs;
   if (gain > 0 && loudness.peak > 0) gain = Math.max(0, Math.min(gain, -20 * Math.log10(loudness.peak) - PEAK_MARGIN_DB));
   return Math.max(MAX_CUT_DB, Math.min(MAX_BOOST_DB, gain));
+}
+
+export function tooLongToLevel(seconds, bytes = 0) {
+  return Number.isFinite(seconds) ? seconds > LEVEL_MAX_SECONDS : bytes > LEVEL_MAX_BYTES_UNKNOWN_LENGTH;
 }

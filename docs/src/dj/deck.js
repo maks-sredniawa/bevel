@@ -1,6 +1,6 @@
 import { dbToLinear } from '../equalizer.js';
 import { measureBuffer } from '../levelling.js';
-import { levelGainDb } from '../loudness.js';
+import { levelGainDb, tooLongToLevel } from '../loudness.js';
 import { EQ_MAX_DB, EQ_MIN_DB, beatIndexAt, clamp, filterFrequencies, loopRange, wrapLoop } from './mixing.js';
 
 const LOW_SHELF_HZ = 250;
@@ -51,7 +51,8 @@ async function decodeAndAnalyse(context, file) {
     return remembered;
   }
   const buffer = await context.decodeAudioData(await file.arrayBuffer());
-  const [{ bpm, beats, downbeat }, loudness] = await Promise.all([analyse(buffer), measureBuffer(buffer)]);
+  const measuring = tooLongToLevel(buffer.duration) ? null : measureBuffer(buffer);
+  const [{ bpm, beats, downbeat }, loudness] = await Promise.all([analyse(buffer), measuring]);
   const song = { buffer, bpm, beats, downbeat, loudness };
   decoded.set(file, song);
   if (decoded.size > REMEMBERED_SONGS) decoded.delete(decoded.keys().next().value);

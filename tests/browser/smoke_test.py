@@ -243,6 +243,21 @@ def check_levelling(driver, name, folder):
     return ok
 
 
+def check_skin_before_app(driver):
+    browser = driver.chromium.launch(headless=True, channel=os.environ.get('BROWSER_CHANNEL'), args=['--mute-audio'])
+    page = browser.new_context(viewport={'width': 1280, 'height': 900}, service_workers='block').new_page()
+    page.goto(BASE + 'index.html')
+    wait_until(page, 'window.retroDJ !== undefined')
+    page.click('[data-skin-choice=nightshift]')
+    page.route('**/src/app.js', lambda route: route.abort())
+    page.reload(wait_until='domcontentloaded')
+    skin = page.evaluate('document.documentElement.dataset.skin')
+    browser.close()
+    ok = skin == 'nightshift'
+    print(json.dumps({'check': 'saved skin applies before the app loads', 'ok': ok, 'skin': skin}), flush=True)
+    return ok
+
+
 def main():
     server = ThreadingHTTPServer(('127.0.0.1', PORT), partial(Handler, directory=str(DOCS)))
     threading.Thread(target=server.serve_forever, daemon=True).start()
@@ -268,6 +283,11 @@ def main():
                 results.append(check_echo_closes(driver, work))
             except Exception as error:
                 print(json.dumps({'check': 'echo closes after Echo Out', 'ok': False, 'error': str(error)[:600]}), flush=True)
+                results.append(False)
+            try:
+                results.append(check_skin_before_app(driver))
+            except Exception as error:
+                print(json.dumps({'check': 'saved skin applies before the app loads', 'ok': False, 'error': str(error)[:600]}), flush=True)
                 results.append(False)
             try:
                 results.append(check_stalled_output(driver, song))

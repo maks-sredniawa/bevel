@@ -1472,14 +1472,11 @@ async function startPlayer() {
   bindSettingsControls();
   bindKeyboard();
   bindMediaSession();
-  applySkin();
   applyVolume();
   setLevelling(settings.levelling);
   setPressed(byId('shuffle'), settings.shuffle);
   applyRepeat();
   setVizMode(settings.vizMode);
-  setCompact(settings.compact);
-  setMini(settings.mini);
   applyEq();
   renderPlaylist();
   renderDeck();
@@ -1503,6 +1500,9 @@ function init() {
   buildMenus();
   bindFileInputs();
   bindDragAndDrop();
+  applySkin();
+  setCompact(settings.compact);
+  setMini(settings.mini);
   startup = startPlayer();
   if ('serviceWorker' in navigator && isSecureContext) navigator.serviceWorker.register('sw.js');
 }

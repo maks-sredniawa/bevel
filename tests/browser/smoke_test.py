@@ -164,12 +164,12 @@ def check_stalled_output(driver, song):
     return True
 
 
-def tone_song(path, frequency):
+def tone_song(path, frequency, amplitude=12000):
     with wave.open(str(path), 'wb') as output:
         output.setnchannels(1)
         output.setsampwidth(2)
         output.setframerate(TONE_RATE)
-        output.writeframes(b''.join(struct.pack('<h', int(12000 * math.sin(2 * math.pi * frequency * i / TONE_RATE))) for i in range(TONE_RATE * 20)))
+        output.writeframes(b''.join(struct.pack('<h', int(amplitude * math.sin(2 * math.pi * frequency * i / TONE_RATE))) for i in range(TONE_RATE * 20)))
 
 
 def settled_tone_level(page):
@@ -213,6 +213,36 @@ def check_echo_closes(driver, folder):
     return ok
 
 
+def check_levelling(driver, name, folder):
+    loud, quiet = pathlib.Path(folder) / 'Tester_-_Loud.wav', pathlib.Path(folder) / 'Tester_-_Quiet.wav'
+    tone_song(loud, TONE_HZ, 12000)
+    tone_song(quiet, TONE_HZ, 1200)
+    browser = getattr(driver, name).launch(headless=True, channel=os.environ.get('BROWSER_CHANNEL'), args=['--mute-audio'] if name == 'chromium' else [])
+    page = browser.new_context(viewport={'width': 1280, 'height': 900}).new_page()
+    page.add_init_script(ANALYSER_HOOK)
+    page.goto(BASE + 'index.html')
+    wait_until(page, 'window.retroDJ !== undefined')
+    page.set_input_files('#file-input', [str(loud), str(quiet)])
+    wait_until(page, "document.querySelectorAll('#tracks .row').length === 2")
+    page.click('#level')
+    page.click('#play')
+    wait_until(page, 'window.__analyser !== undefined')
+    page.evaluate(ANALYSER_SETUP)
+    page.wait_for_timeout(3000)
+    levels = {'loud': settled_tone_level(page)}
+    page.click('#next')
+    page.wait_for_timeout(3000)
+    levels['quiet'] = settled_tone_level(page)
+    page.click('#level')
+    page.wait_for_timeout(1500)
+    levels['quiet_unlevelled'] = settled_tone_level(page)
+    flag_off = not page.evaluate("document.getElementById('flag-lvl').classList.contains('on')")
+    browser.close()
+    ok = abs(levels['loud'] - levels['quiet']) <= 2 and levels['quiet'] - levels['quiet_unlevelled'] >= 8 and flag_off
+    print(json.dumps({'check': 'levelling evens out loud and quiet songs', 'browser': name, 'ok': ok, 'levels_db': levels}), flush=True)
+    return ok
+
+
 def check_skin_before_app(driver):
     browser = driver.chromium.launch(headless=True, channel=os.environ.get('BROWSER_CHANNEL'), args=['--mute-audio'])
     page = browser.new_context(viewport={'width': 1280, 'height': 900}, service_workers='block').new_page()
@@ -240,6 +270,13 @@ def main():
                 results.append(check(driver, name, song))
             except Exception as error:
                 print(json.dumps({'browser': name, 'ok': False, 'error': str(error)[:600]}, indent=1), flush=True)
+                results.append(False)
+            if name in os.environ.get('BEVEL_NO_AUDIO', '').split():
+                continue
+            try:
+                results.append(check_levelling(driver, name, work))
+            except Exception as error:
+                print(json.dumps({'check': 'levelling evens out loud and quiet songs', 'browser': name, 'ok': False, 'error': str(error)[:600]}), flush=True)
                 results.append(False)
         if 'chromium' in (sys.argv[1:] or ['chromium']):
             try:

@@ -23,7 +23,7 @@ function barLevels(buffer, beats, downbeat) {
   return levels;
 }
 
-export function createDJ({ engine, visualiser, pauseNormalPlayer, getPlaylists }) {
+export function createDJ({ engine, visualiser, pauseNormalPlayer, getPlaylists, getLevelling = () => false }) {
   let decks = null;
   let enabled = false;
   let crossfader = -1;
@@ -74,6 +74,7 @@ export function createDJ({ engine, visualiser, pauseNormalPlayer, getPlaylists }
     const loading = deck.load(song.file, { title: song.title, artist: song.artist, playlist: song.playlist });
     notify();
     await loading;
+    deck.setLevelling(getLevelling());
     notify();
     return deck;
   }
@@ -354,6 +355,10 @@ export function createDJ({ engine, visualiser, pauseNormalPlayer, getPlaylists }
       }
       if (auto.token === token) auto = { running: false, status: auto.status };
       notify();
+    },
+    setLevelling(on) {
+      decks?.a.setLevelling(on);
+      decks?.b.setLevelling(on);
     },
     stopAuto() {
       if (auto.token) auto.token.alive = false;

@@ -2,9 +2,12 @@ import { BAND_FREQUENCIES, dbToLinear, headroomDb } from './equalizer.js';
 
 const BAND_Q = 1.2;
 const RESUME_LIMIT_MS = 3000;
+const LEVEL_RAMP_SECONDS = 0.6;
 
 export class AudioEngine {
   #context = null;
+  #level = null;
+  #levelDb = 0;
   #preamp = null;
   #filters = [];
   #master = null;
@@ -43,6 +46,16 @@ export class AudioEngine {
     this.#applyEq();
   }
 
+  setLevel(db, { smooth = false } = {}) {
+    this.#levelDb = db;
+    if (!this.#context) return;
+    const { gain } = this.#level;
+    const now = this.#context.currentTime;
+    gain.cancelScheduledValues(now);
+    if (smooth) gain.setTargetAtTime(dbToLinear(db), now, LEVEL_RAMP_SECONDS / 3);
+    else gain.setValueAtTime(dbToLinear(db), now);
+  }
+
   setVolume(volume, muted) {
     this.#volume = volume;
     this.#muted = muted;
@@ -52,6 +65,8 @@ export class AudioEngine {
   #build() {
     const context = new AudioContext();
     const source = context.createMediaElementSource(this.audio);
+    this.#level = context.createGain();
+    this.#level.gain.value = dbToLinear(this.#levelDb);
     this.#preamp = context.createGain();
     this.#filters = BAND_FREQUENCIES.map((frequency) => {
       const filter = context.createBiquadFilter();
@@ -65,7 +80,7 @@ export class AudioEngine {
     this.analyser.smoothingTimeConstant = 0.72;
     this.#master = context.createGain();
 
-    const chain = [source, this.#preamp, ...this.#filters, this.analyser, this.#master, context.destination];
+    const chain = [source, this.#level, this.#preamp, ...this.#filters, this.analyser, this.#master, context.destination];
     chain.slice(0, -1).forEach((node, index) => node.connect(chain[index + 1]));
     this.#context = context;
     this.#applyEq();

@@ -4,6 +4,8 @@ import { BAND_FREQUENCIES, MAX_GAIN_DB, PRESETS, clampGain } from './equalizer.j
 import { createDJ } from './dj/mixer.js';
 import { bindPanel } from './dj/panel.js';
 import { Library } from './library.js';
+import { measureFile } from './levelling.js';
+import { levelGainDb, tooLongToLevel } from './loudness.js';
 import { Playlist } from './playlist.js';
 import { formatTime, groupIntoPlaylists, isAudioFile, parseTrackName, sortByName } from './tracks.js';
 import { Visualiser } from './visualiser.js';
@@ -44,6 +46,7 @@ const defaults = {
   compact: false,
   mini: false,
   dj: false,
+  levelling: false,
   eq: { enabled: true, preset: 'Flat', preamp: 0, gains: [...PRESETS.Flat] },
 };
 
@@ -94,6 +97,8 @@ let savedPosition = 0;
 let askedToPersist = false;
 const probeQueue = [];
 let probesRunning = 0;
+const levelQueue = [];
+let levelRunning = false;
 
 function setPressed(element, on) {
   element.setAttribute('aria-pressed', String(on));
@@ -128,6 +133,7 @@ function renderDeck() {
   byId('flag-repeat').classList.toggle('on', settings.repeat !== 'off');
   byId('flag-repeat').textContent = settings.repeat === 'off' ? 'RPT' : `RPT:${settings.repeat.toUpperCase()}`;
   byId('flag-eq').classList.toggle('on', settings.eq.enabled);
+  byId('flag-lvl').classList.toggle('on', settings.levelling);
   byId('flag-mute').classList.toggle('on', settings.muted);
 
   const position = track ? playlist.ordered.indexOf(track) + 1 : 0;
@@ -481,6 +487,7 @@ function makeTrack(file) {
     ...parseTrackName(file.name),
     format: file.name.split('.').pop().toUpperCase(),
     duration: null,
+    probed: false,
     kbps: null,
     sampleRate: null,
     channels: null,
@@ -525,7 +532,9 @@ async function probeTrack(track) {
   } catch {
     track.duration = null;
   }
+  track.probed = true;
   queueRender();
+  if (settings.levelling) queueLevelling([track], { first: track.id === loadedId });
 }
 
 function pumpProbes() {
@@ -576,6 +585,8 @@ function loadTrack(track, { announce = true } = {}) {
   pendingSeek = 0;
   audio.src = objectUrl;
   loadedId = track.id;
+  applyLevel();
+  if (settings.levelling) queueLevelling([track], { first: true });
   playlist.select(track.id);
   updateMediaSession(track);
   if (announce) byId('announcer').textContent = `Now playing ${trackLabel(track)}`;
@@ -703,6 +714,7 @@ function clearPlaylist() {
   playlist.clear();
   active.position = 0;
   probeQueue.length = 0;
+  levelQueue.length = 0;
   selectedId = null;
   storageNote = '';
   queueLibraryWrite(() => library.deleteFiles(ids));
@@ -756,6 +768,50 @@ function setVolume(volume) {
   if (settings.muted && settings.volume > 0) settings.muted = false;
   saveSettings();
   applyVolume();
+}
+
+function applyLevel({ smooth = false } = {}) {
+  const track = playlist?.tracks.find((other) => other.id === loadedId);
+  engine.setLevel(settings.levelling && track ? levelGainDb(track.loudness) : 0, { smooth });
+}
+
+async function measureNextLevel() {
+  const track = levelQueue.shift();
+  if (track.loudness !== undefined || tooLongToLevel(track.duration, track.file.size)) return;
+  try {
+    track.loudness = await measureFile(track.file);
+  } catch {
+    track.loudness = null;
+  }
+  scheduleSave();
+  if (track.id === loadedId) applyLevel({ smooth: true });
+}
+
+async function pumpLevelling() {
+  if (levelRunning) return;
+  levelRunning = true;
+  while (settings.levelling && levelQueue.length > 0) await measureNextLevel();
+  levelRunning = false;
+}
+
+function queueLevelling(tracks, { first = false } = {}) {
+  const waiting = tracks.filter((track) => track.probed && track.loudness === undefined);
+  if (first) levelQueue.unshift(...waiting);
+  else levelQueue.push(...waiting);
+  pumpLevelling();
+}
+
+function setLevelling(on) {
+  settings.levelling = on;
+  saveSettings();
+  setPressed(byId('level'), on);
+  if (on) {
+    const current = playlist?.tracks.find((track) => track.id === loadedId);
+    queueLevelling([...(current ? [current] : []), ...playlists.flatMap((record) => record.list.tracks)]);
+  }
+  applyLevel({ smooth: true });
+  dj?.setLevelling(on);
+  renderDeck();
 }
 
 function toggleMute() {
@@ -1296,6 +1352,7 @@ function bindTransport() {
 
   byId('volume').addEventListener('input', (event) => setVolume(Number(event.target.value)));
   byId('mute').addEventListener('click', toggleMute);
+  byId('level').addEventListener('click', () => setLevelling(!settings.levelling));
 
   audio.addEventListener('play', () => {
     visualiser.run();
@@ -1385,7 +1442,7 @@ async function restoreLibrary() {
     playlists = saved.map((record) => {
       const tracks = record.tracks
         .filter((details) => files.has(details.id))
-        .map((details) => ({ ...details, file: files.get(details.id), failed: false }));
+        .map((details) => ({ ...details, file: files.get(details.id), failed: false, probed: details.duration !== null }));
       const list = new Playlist();
       list.repeat = settings.repeat;
       list.restore(tracks, record);
@@ -1416,6 +1473,7 @@ async function startPlayer() {
   bindKeyboard();
   bindMediaSession();
   applyVolume();
+  setLevelling(settings.levelling);
   setPressed(byId('shuffle'), settings.shuffle);
   applyRepeat();
   setVizMode(settings.vizMode);
@@ -1427,6 +1485,7 @@ async function startPlayer() {
     engine,
     visualiser,
     pauseNormalPlayer: () => audio.pause(),
+    getLevelling: () => settings.levelling,
     getPlaylists: () => playlists.map((record) => ({ name: record.name, tracks: record.list.tracks })),
   });
   window.retroDJ = dj;

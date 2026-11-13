@@ -219,7 +219,7 @@
       <fieldset class="group">
         <legend id="main-deck-legend">Deck</legend>
         <div class="lcd in idle" id="lcd" aria-hidden="true">
-          <div class="flags"><span id="flag-play">PLAY</span><span id="flag-shuffle">SHUF</span><span id="flag-repeat">RPT</span><span id="flag-eq">EQ</span><span id="flag-mute">MUTE</span><span class="trackno" id="track-number">TRK --/--</span></div>
+          <div class="flags"><span id="flag-play">PLAY</span><span id="flag-shuffle">SHUF</span><span id="flag-repeat">RPT</span><span id="flag-eq">EQ</span><span id="flag-lvl">LVL</span><span id="flag-mute">MUTE</span><span class="trackno" id="track-number">TRK --/--</span></div>
           <div class="title"><span class="marquee" id="marquee">NO MEDIA · DROP OR OPEN</span></div>
           <div class="big">
             <div class="time"><span id="elapsed">--:--</span><small id="remaining"></small></div>
@@ -240,6 +240,7 @@
           <input class="range" id="volume" type="range" min="0" max="100" step="1" value="72">
           <span style="font-weight:700" id="volume-value">72%</span>
           <button class="btn out" id="mute" aria-pressed="false">Mute</button>
+          <button class="btn out" id="level" aria-pressed="false" aria-label="Loudness levelling" title="Plays quiet and loud songs at the same volume">Level</button>
         </div>
       </fieldset>
 

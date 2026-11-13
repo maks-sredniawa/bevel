@@ -87,7 +87,7 @@ svg { display: block; shape-rendering: crispEdges; }
 .lcd .flags { display: flex; gap: 10px; font-size: 11px; font-weight: 700; }
 .lcd .flags span { opacity: .3; }
 .lcd .flags span.on { opacity: 1; }
-.lcd .flags .trackno { margin-left: auto; opacity: 1; }
+.lcd .flags .trackno { margin-left: auto; opacity: 1; white-space: nowrap; }
 .lcd .title { overflow: hidden; white-space: nowrap; font-size: 18px; font-weight: 700; letter-spacing: .06em; }
 .lcd .title .marquee { display: inline-block; padding-left: 100%; animation: marquee 14s steps(70) infinite -5s; }
 @keyframes marquee { to { transform: translateX(-100%); } }
@@ -98,7 +98,7 @@ svg { display: block; shape-rendering: crispEdges; }
 .seekrow { display: grid; grid-template-columns: 1fr; gap: 6px; margin-top: 10px; }
 .transport { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
 .transport .btn { flex: 1; min-height: 44px; }
-.volrow { display: grid; grid-template-columns: auto 1fr auto auto; gap: 10px; align-items: center; margin-top: 10px; }
+.volrow { display: grid; grid-template-columns: auto 1fr auto auto auto; gap: 10px; align-items: center; margin-top: 10px; }
 .well { background: var(--well); color: var(--well-ink); }
 .viz .well { position: relative; }
 .viz canvas { width: 100%; height: 130px; display: block; }
@@ -157,6 +157,10 @@ svg { display: block; shape-rendering: crispEdges; }
   .work { grid-template-columns: minmax(0, 1fr); padding: 8px 6px 6px; }
   .menubar button { padding: 4px 7px; }
   .lcd .time { font-size: 32px; }
+  .lcd .flags { gap: 4px; }
+  .volrow { grid-template-columns: auto 1fr 1fr auto; }
+  .volrow .range { grid-column: span 2; }
+  .volrow .btn { grid-column: span 2; }
   .lcd .fmt { text-align: left; }
   .faders { gap: 1px; }
       .eq-top { grid-template-columns: 1fr 1fr; }

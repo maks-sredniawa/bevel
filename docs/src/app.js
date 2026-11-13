@@ -1415,13 +1415,10 @@ async function startPlayer() {
   bindSettingsControls();
   bindKeyboard();
   bindMediaSession();
-  applySkin();
   applyVolume();
   setPressed(byId('shuffle'), settings.shuffle);
   applyRepeat();
   setVizMode(settings.vizMode);
-  setCompact(settings.compact);
-  setMini(settings.mini);
   applyEq();
   renderPlaylist();
   renderDeck();

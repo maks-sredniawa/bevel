@@ -1,3 +1,6 @@
+import { dbToLinear } from '../equalizer.js';
+import { measureBuffer } from '../levelling.js';
+import { levelGainDb } from '../loudness.js';
 import { EQ_MAX_DB, EQ_MIN_DB, beatIndexAt, clamp, filterFrequencies, loopRange, wrapLoop } from './mixing.js';
 
 const LOW_SHELF_HZ = 250;
@@ -15,6 +18,7 @@ const DEFAULT_BEAT_SECONDS = 0.5;
 const HOT_CUES = 4;
 const KILL_DB = -60;
 const REMEMBERED_SONGS = 4;
+const LEVEL_RAMP_SECONDS = 0.2;
 
 let worker = null;
 let nextJob = 1;
@@ -47,8 +51,8 @@ async function decodeAndAnalyse(context, file) {
     return remembered;
   }
   const buffer = await context.decodeAudioData(await file.arrayBuffer());
-  const { bpm, beats, downbeat } = await analyse(buffer);
-  const song = { buffer, bpm, beats, downbeat };
+  const [{ bpm, beats, downbeat }, loudness] = await Promise.all([analyse(buffer), measureBuffer(buffer)]);
+  const song = { buffer, bpm, beats, downbeat, loudness };
   decoded.set(file, song);
   if (decoded.size > REMEMBERED_SONGS) decoded.delete(decoded.keys().next().value);
   return song;
@@ -154,13 +158,19 @@ export class Deck {
     this.loop = null;
     this.cues.fill(null);
     this.#offset = 0;
-    const { buffer, bpm, beats, downbeat } = await decodeAndAnalyse(this.#context, file);
+    const { buffer, bpm, beats, downbeat, loudness } = await decodeAndAnalyse(this.#context, file);
+    this.loudness = loudness;
     this.buffer = buffer;
     this.bpm = bpm;
     this.beats = beats;
     this.downbeat = downbeat;
     this.track = track;
     return this;
+  }
+
+  setLevelling(on) {
+    const gain = on ? dbToLinear(levelGainDb(this.loudness)) : 1;
+    this.input.gain.setTargetAtTime(gain, this.#context.currentTime, LEVEL_RAMP_SECONDS / 3);
   }
 
   play() {

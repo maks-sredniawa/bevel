@@ -10,6 +10,7 @@ Your songs are stored in your own browser. They are never uploaded, and the app 
 - Playlists from your files or folders, which survive closing the browser
 - A shuffle that plays every song once before reshuffling
 - A 10-band equaliser with presets, and three skins
+- Loudness levelling, so quiet and loud songs play at the same volume
 - An optional two-deck DJ mode with beat matching, loops, effects and Auto DJ
 - Works offline once it has been opened
 

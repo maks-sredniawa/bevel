@@ -145,7 +145,7 @@ def check(driver, name, song):
     page.evaluate('retroDJ.enable(false)')
     page.evaluate("Object.defineProperty(window, 'documentPictureInPicture', { value: undefined })")
     page.click('#mini-toggle')
-    wait_until(page, "document.getElementById('app').classList.contains('mini')")
+    wait_until(page, "document.documentElement.classList.contains('mini')")
     mini = {'strip_shown': page.is_visible('#mini'), 'full_player_hidden': not page.is_visible('.work')}
     mini['label'] = page.inner_text('#mini-marquee')
     mini['focus_moved_in'] = page.evaluate("document.activeElement.id") == 'mini-play'
@@ -157,7 +157,7 @@ def check(driver, name, song):
     page.click('#mini-next')
     page.click('#mini-prev')
     page.click('#mini-restore')
-    wait_until(page, "!document.getElementById('app').classList.contains('mini')")
+    wait_until(page, "!document.documentElement.classList.contains('mini')")
     mini['full_player_back'] = page.is_visible('.work')
     mini['focus_moved_back'] = page.evaluate("document.activeElement.id") == 'mini-toggle'
     browser.close()
@@ -288,18 +288,63 @@ def check_cleared_songs_skip_levelling(driver, name, folder):
     return ok
 
 
-def check_skin_before_app(driver):
-    browser = driver.chromium.launch(headless=True, channel=os.environ.get('BROWSER_CHANNEL'), args=['--mute-audio'])
+SAVED_LOOK = """(() => {
+  const root = document.documentElement;
+  const shown = (selector) => document.querySelector(selector).getClientRects().length > 0;
+  return {
+    skin: root.dataset.skin,
+    title_colour: getComputedStyle(root).getPropertyValue('--title-1').trim(),
+    theme_colour: document.querySelector('meta[name="theme-color"]').content,
+    app_width: Math.round(document.getElementById('app').getBoundingClientRect().width),
+    mini_strip: shown('#mini'),
+    full_player: shown('.work'),
+    visualiser: shown('.viz'),
+  };
+})()"""
+LOOK_CASES = [
+    ({'skin': 'nightshift'}, {'skin': 'nightshift', 'title_colour': '#7a4a10', 'theme_colour': '#7a4a10', 'app_width': 1080, 'mini_strip': False, 'full_player': True, 'visualiser': True}),
+    ({'skin': 'nightshift', 'compact': True}, {'theme_colour': '#7a4a10', 'app_width': 540, 'mini_strip': False, 'full_player': True, 'visualiser': False}),
+    ({'skin': 'cobalt', 'compact': True, 'mini': True}, {'theme_colour': '#0f2a5e', 'app_width': 360, 'mini_strip': True, 'full_player': False}),
+    ({'skin': 'bogus'}, {'title_colour': '#2b3a6b', 'theme_colour': '#2b3a6b', 'app_width': 1080, 'full_player': True}),
+]
+
+
+def save_settings(page, settings):
+    page.evaluate("(settings) => localStorage.setItem('retro-music-player', JSON.stringify(settings))", settings)
+
+
+def check_saved_look_before_app(driver, name):
+    browser = getattr(driver, name).launch(headless=True, channel=os.environ.get('BROWSER_CHANNEL'), args=['--mute-audio'] if name == 'chromium' else [])
     page = browser.new_context(viewport={'width': 1280, 'height': 900}, service_workers='block').new_page()
-    page.goto(BASE + 'index.html')
-    wait_until(page, 'window.retroDJ !== undefined')
-    page.click('[data-skin-choice=nightshift]')
     page.route('**/src/app.js', lambda route: route.abort())
-    page.reload(wait_until='domcontentloaded')
-    skin = page.evaluate('document.documentElement.dataset.skin')
+    page.goto(BASE + 'index.html', wait_until='domcontentloaded')
+    misses = []
+    for saved, expected in LOOK_CASES:
+        save_settings(page, saved)
+        page.reload(wait_until='domcontentloaded')
+        look = page.evaluate(SAVED_LOOK)
+        wrong = {key: look[key] for key, value in expected.items() if look[key] != value}
+        if wrong:
+            misses.append({'saved': saved, 'wrong': wrong})
+    page.unroute('**/src/app.js')
+    save_settings(page, {'skin': 'bogus'})
+    page.reload()
+    wait_until(page, 'window.retroDJ !== undefined')
+    fallback = page.evaluate("[document.documentElement.dataset.skin, document.querySelector('[data-skin-choice=oatmeal]').getAttribute('aria-pressed')]")
+    if fallback != ['oatmeal', 'true']:
+        misses.append({'unknown skin after app loads': fallback})
+    save_settings(page, {'skin': 'cobalt', 'compact': True, 'mini': True})
+    page.reload()
+    wait_until(page, 'window.retroDJ !== undefined')
+    page.click('#mini-restore')
+    page.click('#compact')
+    page.click('[data-skin-choice=nightshift]')
+    after = page.evaluate(SAVED_LOOK)
+    if (after['app_width'], after['full_player'], after['visualiser'], after['theme_colour']) != (1080, True, True, '#7a4a10'):
+        misses.append({'toggled after launch': after})
     browser.close()
-    ok = skin == 'nightshift'
-    print(json.dumps({'check': 'saved skin applies before the app loads', 'ok': ok, 'skin': skin}), flush=True)
+    ok = not misses
+    print(json.dumps({'check': 'saved look applies before the app loads', 'browser': name, 'ok': ok, 'misses': misses}), flush=True)
     return ok
 
 
@@ -315,6 +360,11 @@ def main():
                 results.append(check(driver, name, song))
             except Exception as error:
                 print(json.dumps({'browser': name, 'ok': False, 'error': str(error)[:600]}, indent=1), flush=True)
+                results.append(False)
+            try:
+                results.append(check_saved_look_before_app(driver, name))
+            except Exception as error:
+                print(json.dumps({'check': 'saved look applies before the app loads', 'browser': name, 'ok': False, 'error': str(error)[:600]}), flush=True)
                 results.append(False)
             if name in os.environ.get('BEVEL_NO_AUDIO', '').split():
                 continue
@@ -333,11 +383,6 @@ def main():
                 results.append(check_echo_closes(driver, work))
             except Exception as error:
                 print(json.dumps({'check': 'echo closes after Echo Out', 'ok': False, 'error': str(error)[:600]}), flush=True)
-                results.append(False)
-            try:
-                results.append(check_skin_before_app(driver))
-            except Exception as error:
-                print(json.dumps({'check': 'saved skin applies before the app loads', 'ok': False, 'error': str(error)[:600]}), flush=True)
                 results.append(False)
             try:
                 results.append(check_stalled_output(driver, song))

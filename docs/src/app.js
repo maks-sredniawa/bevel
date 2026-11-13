@@ -7,12 +7,12 @@ import { Library } from './library.js';
 import { measureFile } from './levelling.js';
 import { levelGainDb, tooLongToLevel } from './loudness.js';
 import { Playlist } from './playlist.js';
+import { SKINS, mergeSettings } from './settings.js';
 import { formatTime, groupIntoPlaylists, isAudioFile, parseTrackName, sortByName } from './tracks.js';
 import { Visualiser } from './visualiser.js';
 
 const APP_NAME = 'Bevel';
 const SETTINGS_KEY = 'retro-music-player';
-const SKINS = [['oatmeal', 'Oatmeal'], ['nightshift', 'Night shift'], ['cobalt', 'Cobalt']];
 const PROBE_WORKERS = 3;
 const PROBE_TIMEOUT_MS = 15000;
 const HEAD_BYTES = 65536;
@@ -52,8 +52,7 @@ const defaults = {
 
 function loadSettings() {
   try {
-    const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY)) ?? {};
-    return { ...defaults, ...saved, eq: { ...defaults.eq, ...saved.eq } };
+    return mergeSettings(defaults, JSON.parse(localStorage.getItem(SETTINGS_KEY)));
   } catch {
     return structuredClone(defaults);
   }
@@ -739,8 +738,11 @@ function select(id, { focus = false } = {}) {
 }
 
 function applySkin() {
-  document.documentElement.dataset.skin = settings.skin;
+  const root = document.documentElement;
+  root.dataset.skin = settings.skin;
   if (miniWindow) miniWindow.document.documentElement.dataset.skin = settings.skin;
+  const themeColour = document.querySelector('meta[name="theme-color"]');
+  themeColour.content = getComputedStyle(root).getPropertyValue('--title-1').trim() || themeColour.content;
   document.querySelectorAll('[data-skin-choice]').forEach((button) => {
     setPressed(button, button.dataset.skinChoice === settings.skin);
   });
@@ -863,7 +865,7 @@ function setVizMode(mode) {
 
 function setCompact(on) {
   settings.compact = on;
-  byId('app').classList.toggle('compact', on);
+  document.documentElement.classList.toggle('compact', on);
   setPressed(byId('compact'), on);
   saveSettings();
 }
@@ -872,7 +874,7 @@ function setMini(on) {
   miniWindow?.close();
   const changed = settings.mini !== on;
   settings.mini = on;
-  byId('app').classList.toggle('mini', on);
+  document.documentElement.classList.toggle('mini', on);
   saveSettings();
   if (changed) (on ? mini.play : byId('mini-toggle')).focus();
 }
@@ -887,6 +889,7 @@ async function popOutMini() {
   }
   const { document: floating } = miniWindow;
   floating.documentElement.dataset.skin = settings.skin;
+  floating.documentElement.classList.add('mini');
   const stylesheet = floating.createElement('link');
   stylesheet.rel = 'stylesheet';
   stylesheet.href = new URL('styles.css', location.href).href;
@@ -894,7 +897,7 @@ async function popOutMini() {
   floating.title = APP_NAME;
   floating.body.className = 'pip';
   const frame = floating.createElement('div');
-  frame.className = 'app mini';
+  frame.className = 'app';
   frame.append(floating.adoptNode(mini.root));
   floating.body.append(frame);
   miniWindow.addEventListener('pagehide', () => {

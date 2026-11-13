@@ -1444,6 +1444,9 @@ function init() {
   buildMenus();
   bindFileInputs();
   bindDragAndDrop();
+  applySkin();
+  setCompact(settings.compact);
+  setMini(settings.mini);
   startup = startPlayer();
   if ('serviceWorker' in navigator && isSecureContext) navigator.serviceWorker.register('sw.js');
 }

@@ -4,9 +4,11 @@ import { BAND_FREQUENCIES, MAX_GAIN_DB, PRESETS, clampGain } from './equalizer.j
 import { createDJ } from './dj/mixer.js';
 import { bindPanel } from './dj/panel.js';
 import { Library } from './library.js';
-import { measureFile } from './levelling.js';
+import { presetForGenre, readGenreTag } from './genre.js';
+import { measureFile, profileFile } from './levelling.js';
 import { levelGainDb, tooLongToLevel } from './loudness.js';
 import { Playlist } from './playlist.js';
+import { presetForSound } from './sound.js';
 import { SKINS, mergeSettings } from './settings.js';
 import { formatTime, groupIntoPlaylists, isAudioFile, parseTrackName, sortByName } from './tracks.js';
 import { Visualiser } from './visualiser.js';
@@ -47,7 +49,7 @@ const defaults = {
   mini: false,
   dj: false,
   levelling: false,
-  eq: { enabled: true, preset: 'Flat', preamp: 0, gains: [...PRESETS.Flat] },
+  eq: { enabled: true, auto: false, preset: 'Flat', preamp: 0, gains: [...PRESETS.Flat] },
 };
 
 function loadSettings() {
@@ -98,6 +100,8 @@ const probeQueue = [];
 let probesRunning = 0;
 const levelQueue = [];
 let levelRunning = false;
+let profiling = Promise.resolve();
+let autoEq = { trackId: null, status: 'waiting', preset: null, genre: null, byHand: false };
 
 function setPressed(element, on) {
   element.setAttribute('aria-pressed', String(on));
@@ -132,6 +136,7 @@ function renderDeck() {
   byId('flag-repeat').classList.toggle('on', settings.repeat !== 'off');
   byId('flag-repeat').textContent = settings.repeat === 'off' ? 'RPT' : `RPT:${settings.repeat.toUpperCase()}`;
   byId('flag-eq').classList.toggle('on', settings.eq.enabled);
+  byId('flag-auto').classList.toggle('on', settings.eq.enabled && settings.eq.auto);
   byId('flag-lvl').classList.toggle('on', settings.levelling);
   byId('flag-mute').classList.toggle('on', settings.muted);
 
@@ -586,6 +591,7 @@ function loadTrack(track, { announce = true } = {}) {
   loadedId = track.id;
   applyLevel();
   if (settings.levelling) queueLevelling([track], { first: true });
+  if (settings.eq.auto && !tunedByHand(track)) autoTune(track);
   playlist.select(track.id);
   updateMediaSession(track);
   if (announce) byId('announcer').textContent = `Now playing ${trackLabel(track)}`;
@@ -641,6 +647,8 @@ function unload() {
   if (objectUrl) URL.revokeObjectURL(objectUrl);
   objectUrl = null;
   loadedId = null;
+  autoEq = { trackId: null, status: 'waiting', preset: null, genre: null, byHand: false };
+  renderAutoEq();
   renderDeck();
 }
 
@@ -910,9 +918,11 @@ function formatGain(gain) {
   return gain > 0 ? `+${gain}` : String(gain);
 }
 
-function applyEq() {
-  const { enabled, preamp, gains, preset } = settings.eq;
+function applyEq({ smooth = false } = {}) {
+  const { enabled, auto, preamp, gains, preset } = settings.eq;
   byId('eq-enabled').checked = enabled;
+  byId('eq-auto').checked = auto;
+  byId('eq-auto').disabled = !enabled;
   byId('eq-preset').value = preset;
   byId('faders').querySelectorAll('.fader').forEach((fader) => {
     const band = fader.dataset.band;
@@ -922,15 +932,78 @@ function applyEq() {
     input.setAttribute('aria-valuetext', `${formatGain(gain)} dB`);
     fader.querySelector('output').textContent = formatGain(gain);
   });
-  engine.setEq({ enabled, preamp, gains });
+  engine.setEq({ enabled, preamp, gains }, { smooth });
   saveSettings();
+  renderAutoEq();
   renderDeck();
 }
 
-function setPreset(name) {
+function setPreset(name, { smooth = false } = {}) {
   if (!PRESETS[name]) return;
   settings.eq.preset = name;
   settings.eq.gains = [...PRESETS[name]];
+  applyEq({ smooth });
+}
+
+function changeEqByHand() {
+  if (settings.eq.auto && autoEq.trackId) autoEq.byHand = true;
+}
+
+function renderAutoEq() {
+  const line = byId('eq-genre');
+  line.hidden = !settings.eq.auto;
+  if (line.hidden) return;
+  const texts = {
+    waiting: 'Genre: waiting for a song',
+    listening: 'Genre: listening…',
+    tag: `Genre: ${autoEq.genre} (from tag)`,
+    sound: `Genre: ${autoEq.genre} (guessed from sound)`,
+    unknown: 'Genre: unknown, using Flat',
+  };
+  const text = texts[autoEq.status] + (autoEq.byHand ? ' · changed by hand until next song' : '');
+  if (line.textContent !== text) line.textContent = text;
+}
+
+function tunedByHand(track) {
+  return autoEq.trackId === track.id && autoEq.byHand;
+}
+
+function profileWhileLoaded(track) {
+  profiling = profiling.then(async () => {
+    if (track.sound !== undefined || track.id !== loadedId) return;
+    track.sound = await profileFile(track.file).catch(() => null);
+    scheduleSave();
+  });
+  return profiling;
+}
+
+async function lookUpGenre(track) {
+  if (track.genre === undefined) {
+    track.genre = await readGenreTag(track.file).catch(() => null);
+    scheduleSave();
+  }
+  const tagged = presetForGenre(track.genre);
+  if (tagged) return { status: 'tag', preset: tagged, genre: track.genre };
+  if (track.sound === undefined && !tooLongToLevel(track.duration, track.file.size)) await profileWhileLoaded(track);
+  const guessed = presetForSound(track.sound);
+  return guessed ? { status: 'sound', preset: guessed, genre: guessed } : { status: 'unknown', preset: 'Flat', genre: null };
+}
+
+async function autoTune(track) {
+  const job = { trackId: track.id, status: 'listening', preset: null, genre: null, byHand: false };
+  autoEq = job;
+  renderAutoEq();
+  const found = await lookUpGenre(track);
+  if (!settings.eq.auto || autoEq !== job) return;
+  Object.assign(job, found);
+  if (job.byHand) renderAutoEq();
+  else setPreset(found.preset, { smooth: true });
+}
+
+function setAutoEq(on) {
+  settings.eq.auto = on;
+  const track = playlist?.tracks.find((other) => other.id === loadedId);
+  if (on && track) autoTune(track);
   applyEq();
 }
 
@@ -957,6 +1030,7 @@ function buildFaders() {
       } else {
         settings.eq.gains[Number(band)] = gain;
         settings.eq.preset = 'Custom';
+        changeEqByHand();
       }
       applyEq();
     });
@@ -1408,9 +1482,14 @@ function bindSettingsControls() {
     settings.eq.enabled = event.target.checked;
     applyEq();
   });
-  byId('eq-preset').addEventListener('change', (event) => setPreset(event.target.value));
+  byId('eq-auto').addEventListener('change', (event) => setAutoEq(event.target.checked));
+  byId('eq-preset').addEventListener('change', (event) => {
+    changeEqByHand();
+    setPreset(event.target.value);
+  });
   byId('eq-reset').addEventListener('click', () => {
     settings.eq.preamp = 0;
+    changeEqByHand();
     setPreset('Flat');
   });
 }

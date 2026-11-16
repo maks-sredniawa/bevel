@@ -1,4 +1,5 @@
 const MPEG_RATES = [44100, 48000, 32000];
+const ID3_FIELDS = { TIT2: 'title', TPE1: 'artist', TCON: 'genre' };
 
 function ascii(bytes, start, length) {
   return String.fromCharCode(...bytes.subarray(start, start + length));
@@ -36,9 +37,10 @@ export function parseId3(bytes) {
     const id = ascii(bytes, offset, 4);
     const frameSize = version === 4 ? syncsafe(bytes, offset + 4) : bigEndian(bytes, offset + 4);
     if (frameSize === 0 || offset + 10 + frameSize > end) break;
-    if (id === 'TIT2' || id === 'TPE1') {
+    const field = ID3_FIELDS[id];
+    if (field) {
       const text = decodeText(bytes.subarray(offset + 10, offset + 10 + frameSize));
-      if (text) result[id === 'TIT2' ? 'title' : 'artist'] = text;
+      if (text) result[field] = text;
     }
     offset += 10 + frameSize;
   }

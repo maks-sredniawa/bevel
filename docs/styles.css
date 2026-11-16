@@ -108,9 +108,11 @@ svg { display: block; shape-rendering: crispEdges; }
 .radios input { appearance: none; width: 14px; height: 14px; margin: 0; border-radius: 50%; border: 2px solid; border-color: var(--lo) var(--hi) var(--hi) var(--lo); background: var(--hi); position: relative; }
 .radios input:checked::after { content: ""; position: absolute; inset: 2px; border-radius: 50%; background: var(--ink); }
 
-.eq-top { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; margin-bottom: 10px; }
+.eq-top { display: grid; grid-template-columns: auto auto 1fr auto; gap: 8px; align-items: center; margin-bottom: 10px; }
 .check { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; font-weight: 700; cursor: pointer; }
 .check input { appearance: none; width: 16px; height: 16px; margin: 0; border: 2px solid; border-color: var(--lo) var(--hi) var(--hi) var(--lo); background: var(--hi); position: relative; }
+.eq-genre { margin: -4px 0 10px; color: var(--ink); font-size: 12px; min-height: 1.3em; }
+.check:has(input:disabled) { opacity: 0.5; cursor: default; }
 .check input:checked::after { content: ""; position: absolute; left: 4px; top: 1px; width: 4px; height: 8px; border: solid var(--ink); border-width: 0 2px 2px 0; transform: rotate(45deg); }
 .select { min-height: 40px; padding: 0 28px 0 8px; background: var(--hi) url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8"><path d="M1 2h6L4 6z" fill="%23222"/></svg>') no-repeat right 6px center / 10px; appearance: none; color: #111; font-weight: 700; }
 .faders { display: grid; grid-template-columns: repeat(11, minmax(0, 1fr)); gap: 3px; }

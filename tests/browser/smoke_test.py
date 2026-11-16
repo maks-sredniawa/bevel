@@ -65,6 +65,20 @@ TONE_LEVEL = """(tone) => {
   for (let i = Math.round(tone * 0.9 / binHz); i <= Math.round(tone * 1.1 / binHz); i++) loudest = Math.max(loudest, data[i]);
   return Math.round(loudest);
 }"""
+SAVED_CURRENT_PROFILED = """new Promise((resolve) => {
+  const open = indexedDB.open('retro-music-player');
+  open.onerror = () => resolve(false);
+  open.onsuccess = () => {
+    const read = open.result.transaction('state').objectStore('state').get('playlist');
+    read.onerror = () => { open.result.close(); resolve(false); };
+    read.onsuccess = () => {
+      open.result.close();
+      const record = read.result?.playlists?.find((list) => list.id === read.result.activeId);
+      resolve(Boolean(record?.tracks.find((track) => track.id === record.currentId)?.sound));
+    };
+  };
+})"""
+AUTO_EQ_SETTLED = "!document.getElementById('eq-genre').textContent.includes('listening')"
 AUDIO_STATE = """(() => {
   const audio = document.getElementById('audio');
   return { paused: audio.paused, time: audio.currentTime, ready: audio.readyState, network: audio.networkState, duration: audio.duration, error: audio.error?.message ?? null };
@@ -265,6 +279,97 @@ def check_levelling(driver, name, folder):
     return ok
 
 
+def tagged(path, genre):
+    body = genre.encode() + b'\0'
+    ignr = b'IGNR' + struct.pack('<I', len(body)) + body + (b'\0' if len(body) % 2 else b'')
+    info = b'LIST' + struct.pack('<I', 4 + len(ignr)) + b'INFO' + ignr
+    data = path.read_bytes() + info
+    path.write_bytes(data[:4] + struct.pack('<I', len(data) - 8) + data[8:])
+
+
+def click_song(path, bpm=124, seconds=20):
+    spacing = round(TONE_RATE * 60 / bpm)
+    frames = [0] * (TONE_RATE * seconds)
+    for start in range(0, len(frames), spacing):
+        for i in range(min(1000, len(frames) - start)):
+            frames[start + i] = int(26000 * math.exp(-i / 150) * math.sin(2 * math.pi * 60 * i / TONE_RATE))
+    with wave.open(str(path), 'wb') as output:
+        output.setnchannels(1)
+        output.setsampwidth(2)
+        output.setframerate(TONE_RATE)
+        output.writeframes(b''.join(struct.pack('<h', frame) for frame in frames))
+
+
+def check_auto_eq(driver, name, folder):
+    tag_song, sound_song = pathlib.Path(folder) / 'Tester_-_A_Tagged.wav', pathlib.Path(folder) / 'Tester_-_B_Untagged.wav'
+    tone_song(tag_song, TONE_HZ)
+    tagged(tag_song, 'Bebop')
+    click_song(sound_song)
+    browser = getattr(driver, name).launch(headless=True, channel=os.environ.get('BROWSER_CHANNEL'), args=['--mute-audio'] if name == 'chromium' else [])
+    try:
+        seen = auto_eq_seen(browser.new_context(viewport={'width': 1280, 'height': 900}).new_page(), tag_song, sound_song)
+    finally:
+        browser.close()
+    ok = (seen['hidden_before'] and seen['tag_line'] == 'Genre: Bebop (from tag)' and seen['tag_preset'] == 'Jazz' and seen['flag_on']
+          and seen['by_hand_line'].endswith('changed by hand until next song')
+          and seen['repeat_line'] == seen['by_hand_line'] and seen['repeat_preset'] == 'Rock'
+          and seen['sound_line'] == f"Genre: {seen['sound_preset']} (guessed from sound)"
+          and seen['restored_line'] in (seen['sound_line'], 'Genre: waiting for a song') and seen['restored_preset'] == seen['sound_preset']
+          and seen['remembered'] and seen['hidden_after'] and seen['flag_off'] and seen['kept_preset'] == seen['sound_preset'])
+    print(json.dumps({'check': 'auto EQ picks a preset from the tag or the sound', 'browser': name, 'ok': ok, 'seen': seen}), flush=True)
+    return ok
+
+
+# Playwright's Firefox hangs reloading a page served with Cross-Origin-Opener-Policy, so a fresh tab stands in for the reload.
+def reopen(page):
+    fresh = page.context.new_page()
+    page.close()
+    fresh.goto(BASE + 'index.html')
+    return fresh
+
+
+def auto_eq_seen(page, tag_song, sound_song):
+    page.goto(BASE + 'index.html')
+    wait_until(page, 'window.retroDJ !== undefined')
+    page.set_input_files('#file-input', [str(tag_song), str(sound_song)])
+    wait_until(page, "document.querySelectorAll('#tracks .row').length === 2")
+    line = "document.getElementById('eq-genre')"
+    seen = {'hidden_before': page.evaluate(f'{line}.hidden')}
+    page.check('#eq-auto')
+    page.click('#play')
+    wait_until(page, f"{line}.textContent.includes('(from tag)')")
+    seen['tag_line'] = page.evaluate(f'{line}.textContent')
+    seen['tag_preset'] = page.input_value('#eq-preset')
+    seen['flag_on'] = page.evaluate("document.getElementById('flag-auto').classList.contains('on')")
+    page.select_option('#eq-preset', 'Rock')
+    seen['by_hand_line'] = page.evaluate(f'{line}.textContent')
+    page.click('#repeat')
+    page.click('#repeat')
+    first_src = page.evaluate("document.getElementById('audio').src")
+    page.evaluate("document.getElementById('audio').dispatchEvent(new Event('ended'))")
+    wait_until(page, f"document.getElementById('audio').src !== {json.dumps(first_src)}")
+    page.wait_for_timeout(500)
+    seen['repeat_line'] = page.evaluate(f'{line}.textContent')
+    seen['repeat_preset'] = page.input_value('#eq-preset')
+    page.click('#repeat')
+    page.click('#next')
+    wait_until(page, f"{line}.textContent.includes('(guessed from sound)')", seconds=40)
+    seen['sound_line'] = page.evaluate(f'{line}.textContent')
+    seen['sound_preset'] = page.input_value('#eq-preset')
+    wait_until(page, SAVED_CURRENT_PROFILED)
+    page = reopen(page)
+    wait_until(page, 'window.retroDJ !== undefined')
+    wait_until(page, AUTO_EQ_SETTLED)
+    seen['restored_line'] = page.evaluate(f'{line}.textContent')
+    seen['restored_preset'] = page.input_value('#eq-preset')
+    seen['remembered'] = page.is_checked('#eq-auto')
+    page.uncheck('#eq-auto')
+    seen['hidden_after'] = page.evaluate(f'{line}.hidden')
+    seen['flag_off'] = not page.evaluate("document.getElementById('flag-auto').classList.contains('on')")
+    seen['kept_preset'] = page.input_value('#eq-preset')
+    return seen
+
+
 def check_cleared_songs_skip_levelling(driver, name, folder):
     cleared, kept = pathlib.Path(folder) / 'Tester_-_Cleared.wav', pathlib.Path(folder) / 'Tester_-_Kept.wav'
     tone_song(cleared, TONE_HZ)
@@ -372,6 +477,11 @@ def main():
                 results.append(check_levelling(driver, name, work))
             except Exception as error:
                 print(json.dumps({'check': 'levelling evens out loud and quiet songs', 'browser': name, 'ok': False, 'error': str(error)[:600]}), flush=True)
+                results.append(False)
+            try:
+                results.append(check_auto_eq(driver, name, work))
+            except Exception as error:
+                print(json.dumps({'check': 'auto EQ picks a preset from the tag or the sound', 'browser': name, 'ok': False, 'error': str(error)[:600]}), flush=True)
                 results.append(False)
             try:
                 results.append(check_cleared_songs_skip_levelling(driver, name, work))

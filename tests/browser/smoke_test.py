@@ -320,6 +320,14 @@ def check_auto_eq(driver, name, folder):
     return ok
 
 
+# Playwright's Firefox hangs reloading a page served with Cross-Origin-Opener-Policy, so a fresh tab stands in for the reload.
+def reopen(page):
+    fresh = page.context.new_page()
+    page.close()
+    fresh.goto(BASE + 'index.html')
+    return fresh
+
+
 def auto_eq_seen(page, tag_song, sound_song):
     page.goto(BASE + 'index.html')
     wait_until(page, 'window.retroDJ !== undefined')
@@ -349,8 +357,7 @@ def auto_eq_seen(page, tag_song, sound_song):
     seen['sound_line'] = page.evaluate(f'{line}.textContent')
     seen['sound_preset'] = page.input_value('#eq-preset')
     wait_until(page, SAVED_CURRENT_PROFILED)
-    page.evaluate("document.getElementById('audio').pause()")
-    page.reload(wait_until='domcontentloaded')
+    page = reopen(page)
     wait_until(page, 'window.retroDJ !== undefined')
     wait_until(page, AUTO_EQ_SETTLED)
     seen['restored_line'] = page.evaluate(f'{line}.textContent')

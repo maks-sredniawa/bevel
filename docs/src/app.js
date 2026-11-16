@@ -136,7 +136,7 @@ function renderDeck() {
   byId('flag-repeat').classList.toggle('on', settings.repeat !== 'off');
   byId('flag-repeat').textContent = settings.repeat === 'off' ? 'RPT' : `RPT:${settings.repeat.toUpperCase()}`;
   byId('flag-eq').classList.toggle('on', settings.eq.enabled);
-  byId('flag-auto').classList.toggle('on', settings.eq.enabled && settings.eq.auto);
+  byId('flag-auto').classList.toggle('on', settings.eq.enabled && autoEqActive());
   byId('flag-lvl').classList.toggle('on', settings.levelling);
   byId('flag-mute').classList.toggle('on', settings.muted);
 
@@ -591,7 +591,7 @@ function loadTrack(track, { announce = true } = {}) {
   loadedId = track.id;
   applyLevel();
   if (settings.levelling) queueLevelling([track], { first: true });
-  if (settings.eq.auto && !tunedByHand(track)) autoTune(track);
+  if (autoEqActive() && !tunedByHand(track)) autoTune(track);
   playlist.select(track.id);
   updateMediaSession(track);
   if (announce) byId('announcer').textContent = `Now playing ${trackLabel(track)}`;
@@ -945,8 +945,12 @@ function setPreset(name, { smooth = false } = {}) {
   applyEq({ smooth });
 }
 
+function autoEqActive() {
+  return settings.eq.auto && !settings.dj;
+}
+
 function changeEqByHand() {
-  if (settings.eq.auto && autoEq.trackId) autoEq.byHand = true;
+  if (autoEqActive() && autoEq.trackId) autoEq.byHand = true;
 }
 
 function renderAutoEq() {
@@ -960,7 +964,7 @@ function renderAutoEq() {
     sound: `Genre: ${autoEq.genre} (guessed from sound)`,
     unknown: 'Genre: unknown, using Flat',
   };
-  const text = texts[autoEq.status] + (autoEq.byHand ? ' · changed by hand until next song' : '');
+  const text = settings.dj ? 'Genre: off in DJ mode' : texts[autoEq.status] + (autoEq.byHand ? ' · changed by hand until next song' : '');
   if (line.textContent !== text) line.textContent = text;
 }
 
@@ -994,16 +998,20 @@ async function autoTune(track) {
   autoEq = job;
   renderAutoEq();
   const found = await lookUpGenre(track);
-  if (!settings.eq.auto || autoEq !== job) return;
+  if (!autoEqActive() || autoEq !== job) return;
   Object.assign(job, found);
   if (job.byHand) renderAutoEq();
   else setPreset(found.preset, { smooth: true });
 }
 
+function retuneLoaded({ keepByHand }) {
+  const track = playlist?.tracks.find((other) => other.id === loadedId);
+  if (autoEqActive() && track && !(keepByHand && tunedByHand(track))) autoTune(track);
+}
+
 function setAutoEq(on) {
   settings.eq.auto = on;
-  const track = playlist?.tracks.find((other) => other.id === loadedId);
-  if (on && track) autoTune(track);
+  retuneLoaded({ keepByHand: false });
   applyEq();
 }
 
@@ -1237,6 +1245,9 @@ async function setDjMode(on) {
   settings.dj = on;
   saveSettings();
   applyDjMode();
+  retuneLoaded({ keepByHand: true });
+  renderAutoEq();
+  renderDeck();
   await dj.enable(on);
   if (on) visualiser.run();
   else if (audio.paused) visualiser.stop();

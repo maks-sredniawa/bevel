@@ -65,6 +65,20 @@ TONE_LEVEL = """(tone) => {
   for (let i = Math.round(tone * 0.9 / binHz); i <= Math.round(tone * 1.1 / binHz); i++) loudest = Math.max(loudest, data[i]);
   return Math.round(loudest);
 }"""
+SAVED_CURRENT_PROFILED = """new Promise((resolve) => {
+  const open = indexedDB.open('retro-music-player');
+  open.onerror = () => resolve(false);
+  open.onsuccess = () => {
+    const read = open.result.transaction('state').objectStore('state').get('playlist');
+    read.onerror = () => { open.result.close(); resolve(false); };
+    read.onsuccess = () => {
+      open.result.close();
+      const record = read.result?.playlists?.find((list) => list.id === read.result.activeId);
+      resolve(Boolean(record?.tracks.find((track) => track.id === record.currentId)?.sound));
+    };
+  };
+})"""
+AUTO_EQ_SETTLED = "/\\((from tag|guessed from sound)\\)$/.test(document.getElementById('eq-genre').textContent)"
 AUDIO_STATE = """(() => {
   const audio = document.getElementById('audio');
   return { paused: audio.paused, time: audio.currentTime, ready: audio.readyState, network: audio.networkState, duration: audio.duration, error: audio.error?.message ?? null };
@@ -306,12 +320,24 @@ def check_auto_eq(driver, name, folder):
     seen['flag_on'] = page.evaluate("document.getElementById('flag-auto').classList.contains('on')")
     page.select_option('#eq-preset', 'Rock')
     seen['by_hand_line'] = page.evaluate(f'{line}.textContent')
+    page.click('#repeat')
+    page.click('#repeat')
+    first_src = page.evaluate("document.getElementById('audio').src")
+    page.evaluate("document.getElementById('audio').dispatchEvent(new Event('ended'))")
+    wait_until(page, f"document.getElementById('audio').src !== {json.dumps(first_src)}")
+    page.wait_for_timeout(500)
+    seen['repeat_line'] = page.evaluate(f'{line}.textContent')
+    seen['repeat_preset'] = page.input_value('#eq-preset')
+    page.click('#repeat')
     page.click('#next')
     wait_until(page, f"{line}.textContent.includes('(guessed from sound)')", seconds=40)
     seen['sound_line'] = page.evaluate(f'{line}.textContent')
     seen['sound_preset'] = page.input_value('#eq-preset')
+    wait_until(page, SAVED_CURRENT_PROFILED)
     page.reload()
     wait_until(page, 'window.retroDJ !== undefined')
+    wait_until(page, AUTO_EQ_SETTLED)
+    seen['restored_line'] = page.evaluate(f'{line}.textContent')
     seen['remembered'] = page.is_checked('#eq-auto')
     page.uncheck('#eq-auto')
     seen['hidden_after'] = page.evaluate(f'{line}.hidden')
@@ -320,8 +346,9 @@ def check_auto_eq(driver, name, folder):
     browser.close()
     ok = (hidden_before and seen['tag_line'] == 'Genre: Bebop (from tag)' and seen['tag_preset'] == 'Jazz' and seen['flag_on']
           and seen['by_hand_line'].endswith('changed by hand until next song')
+          and seen['repeat_line'] == seen['by_hand_line'] and seen['repeat_preset'] == 'Rock'
           and seen['sound_line'] == f"Genre: {seen['sound_preset']} (guessed from sound)"
-          and seen['remembered'] and seen['hidden_after'] and seen['flag_off'] and seen['kept_preset'] == seen['sound_preset'])
+          and seen['restored_line'] == seen['sound_line'] and seen['remembered'] and seen['hidden_after'] and seen['flag_off'] and seen['kept_preset'] == seen['sound_preset'])
     print(json.dumps({'check': 'auto EQ picks a preset from the tag or the sound', 'browser': name, 'ok': ok, 'seen': seen}), flush=True)
     return ok
 

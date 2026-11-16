@@ -100,6 +100,7 @@ const probeQueue = [];
 let probesRunning = 0;
 const levelQueue = [];
 let levelRunning = false;
+let profiling = Promise.resolve();
 let autoEq = { trackId: null, status: 'waiting', preset: null, genre: null, byHand: false };
 
 function setPressed(element, on) {
@@ -590,7 +591,7 @@ function loadTrack(track, { announce = true } = {}) {
   loadedId = track.id;
   applyLevel();
   if (settings.levelling) queueLevelling([track], { first: true });
-  if (settings.eq.auto) autoTune(track);
+  if (settings.eq.auto && !tunedByHand(track)) autoTune(track);
   playlist.select(track.id);
   updateMediaSession(track);
   if (announce) byId('announcer').textContent = `Now playing ${trackLabel(track)}`;
@@ -959,7 +960,21 @@ function renderAutoEq() {
     sound: `Genre: ${autoEq.genre} (guessed from sound)`,
     unknown: 'Genre: unknown, using Flat',
   };
-  line.textContent = texts[autoEq.status] + (autoEq.byHand ? ' · changed by hand until next song' : '');
+  const text = texts[autoEq.status] + (autoEq.byHand ? ' · changed by hand until next song' : '');
+  if (line.textContent !== text) line.textContent = text;
+}
+
+function tunedByHand(track) {
+  return autoEq.trackId === track.id && autoEq.byHand;
+}
+
+function profileWhileLoaded(track) {
+  profiling = profiling.then(async () => {
+    if (track.sound !== undefined || track.id !== loadedId) return;
+    track.sound = await profileFile(track.file).catch(() => null);
+    scheduleSave();
+  });
+  return profiling;
 }
 
 async function lookUpGenre(track) {
@@ -969,10 +984,7 @@ async function lookUpGenre(track) {
   }
   const tagged = presetForGenre(track.genre);
   if (tagged) return { status: 'tag', preset: tagged, genre: track.genre };
-  if (track.sound === undefined && !tooLongToLevel(track.duration, track.file.size)) {
-    track.sound = await profileFile(track.file).catch(() => null);
-    scheduleSave();
-  }
+  if (track.sound === undefined && !tooLongToLevel(track.duration, track.file.size)) await profileWhileLoaded(track);
   const guessed = presetForSound(track.sound);
   return guessed ? { status: 'sound', preset: guessed, genre: guessed } : { status: 'unknown', preset: 'Flat', genre: null };
 }

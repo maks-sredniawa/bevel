@@ -265,6 +265,67 @@ def check_levelling(driver, name, folder):
     return ok
 
 
+def tagged(path, genre):
+    body = genre.encode() + b'\0'
+    ignr = b'IGNR' + struct.pack('<I', len(body)) + body + (b'\0' if len(body) % 2 else b'')
+    info = b'LIST' + struct.pack('<I', 4 + len(ignr)) + b'INFO' + ignr
+    data = path.read_bytes() + info
+    path.write_bytes(data[:4] + struct.pack('<I', len(data) - 8) + data[8:])
+
+
+def click_song(path, bpm=124, seconds=20):
+    spacing = round(TONE_RATE * 60 / bpm)
+    frames = [0] * (TONE_RATE * seconds)
+    for start in range(0, len(frames), spacing):
+        for i in range(min(1000, len(frames) - start)):
+            frames[start + i] = int(26000 * math.exp(-i / 150) * math.sin(2 * math.pi * 60 * i / TONE_RATE))
+    with wave.open(str(path), 'wb') as output:
+        output.setnchannels(1)
+        output.setsampwidth(2)
+        output.setframerate(TONE_RATE)
+        output.writeframes(b''.join(struct.pack('<h', frame) for frame in frames))
+
+
+def check_auto_eq(driver, name, folder):
+    tag_song, sound_song = pathlib.Path(folder) / 'Tester_-_A_Tagged.wav', pathlib.Path(folder) / 'Tester_-_B_Untagged.wav'
+    tone_song(tag_song, TONE_HZ)
+    tagged(tag_song, 'Bebop')
+    click_song(sound_song)
+    browser = getattr(driver, name).launch(headless=True, channel=os.environ.get('BROWSER_CHANNEL'), args=['--mute-audio'] if name == 'chromium' else [])
+    page = browser.new_context(viewport={'width': 1280, 'height': 900}).new_page()
+    page.goto(BASE + 'index.html')
+    wait_until(page, 'window.retroDJ !== undefined')
+    page.set_input_files('#file-input', [str(tag_song), str(sound_song)])
+    wait_until(page, "document.querySelectorAll('#tracks .row').length === 2")
+    line = "document.getElementById('eq-genre')"
+    hidden_before = page.evaluate(f'{line}.hidden')
+    page.check('#eq-auto')
+    page.click('#play')
+    wait_until(page, f"{line}.textContent.includes('(from tag)')")
+    seen = {'tag_line': page.evaluate(f'{line}.textContent'), 'tag_preset': page.input_value('#eq-preset')}
+    seen['flag_on'] = page.evaluate("document.getElementById('flag-auto').classList.contains('on')")
+    page.select_option('#eq-preset', 'Rock')
+    seen['by_hand_line'] = page.evaluate(f'{line}.textContent')
+    page.click('#next')
+    wait_until(page, f"{line}.textContent.includes('(guessed from sound)')", seconds=40)
+    seen['sound_line'] = page.evaluate(f'{line}.textContent')
+    seen['sound_preset'] = page.input_value('#eq-preset')
+    page.reload()
+    wait_until(page, 'window.retroDJ !== undefined')
+    seen['remembered'] = page.is_checked('#eq-auto')
+    page.uncheck('#eq-auto')
+    seen['hidden_after'] = page.evaluate(f'{line}.hidden')
+    seen['flag_off'] = not page.evaluate("document.getElementById('flag-auto').classList.contains('on')")
+    seen['kept_preset'] = page.input_value('#eq-preset')
+    browser.close()
+    ok = (hidden_before and seen['tag_line'] == 'Genre: Bebop (from tag)' and seen['tag_preset'] == 'Jazz' and seen['flag_on']
+          and seen['by_hand_line'].endswith('changed by hand until next song')
+          and seen['sound_line'] == f"Genre: {seen['sound_preset']} (guessed from sound)"
+          and seen['remembered'] and seen['hidden_after'] and seen['flag_off'] and seen['kept_preset'] == seen['sound_preset'])
+    print(json.dumps({'check': 'auto EQ picks a preset from the tag or the sound', 'browser': name, 'ok': ok, 'seen': seen}), flush=True)
+    return ok
+
+
 def check_cleared_songs_skip_levelling(driver, name, folder):
     cleared, kept = pathlib.Path(folder) / 'Tester_-_Cleared.wav', pathlib.Path(folder) / 'Tester_-_Kept.wav'
     tone_song(cleared, TONE_HZ)
@@ -372,6 +433,11 @@ def main():
                 results.append(check_levelling(driver, name, work))
             except Exception as error:
                 print(json.dumps({'check': 'levelling evens out loud and quiet songs', 'browser': name, 'ok': False, 'error': str(error)[:600]}), flush=True)
+                results.append(False)
+            try:
+                results.append(check_auto_eq(driver, name, work))
+            except Exception as error:
+                print(json.dumps({'check': 'auto EQ picks a preset from the tag or the sound', 'browser': name, 'ok': False, 'error': str(error)[:600]}), flush=True)
                 results.append(False)
             try:
                 results.append(check_cleared_songs_skip_levelling(driver, name, work))

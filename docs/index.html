@@ -219,7 +219,7 @@
       <fieldset class="group">
         <legend id="main-deck-legend">Deck</legend>
         <div class="lcd in idle" id="lcd" aria-hidden="true">
-          <div class="flags"><span id="flag-play">PLAY</span><span id="flag-shuffle">SHUF</span><span id="flag-repeat">RPT</span><span id="flag-eq">EQ</span><span id="flag-lvl">LVL</span><span id="flag-mute">MUTE</span><span class="trackno" id="track-number">TRK --/--</span></div>
+          <div class="flags"><span id="flag-play">PLAY</span><span id="flag-shuffle">SHUF</span><span id="flag-repeat">RPT</span><span id="flag-eq">EQ</span><span id="flag-auto">AUTO</span><span id="flag-lvl">LVL</span><span id="flag-mute">MUTE</span><span class="trackno" id="track-number">TRK --/--</span></div>
           <div class="title"><span class="marquee" id="marquee">NO MEDIA · DROP OR OPEN</span></div>
           <div class="big">
             <div class="time"><span id="elapsed">--:--</span><small id="remaining"></small></div>
@@ -258,9 +258,11 @@
         <legend>Equaliser</legend>
         <div class="eq-top">
           <label class="check"><input type="checkbox" id="eq-enabled"> Enabled</label>
+          <label class="check" title="Picks the preset that fits each song's genre"><input type="checkbox" id="eq-auto"> Auto</label>
           <select class="select in" id="eq-preset" aria-label="Preset"></select>
           <button class="btn out" id="eq-reset" style="min-height:40px">Reset</button>
         </div>
+        <p class="eq-genre" id="eq-genre" aria-live="polite" hidden></p>
         <div class="faders" id="faders" role="group" aria-label="Equaliser bands"></div>
       </fieldset>
     </div>

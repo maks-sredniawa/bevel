@@ -1,49 +1,66 @@
-const MEASURE_RATE = 44100;
-const MEASURE_TIMEOUT_MS = 30000;
-const UNMEASURED = { lufs: null, peak: 0 };
+const DECODE_RATE = 44100;
+const ANALYSIS_TIMEOUT_MS = 30000;
 
-let worker = null;
-let nextJob = 1;
-const jobs = new Map();
+function workerRunner(script, { unmeasured, read }) {
+  let worker = null;
+  let nextJob = 1;
+  const jobs = new Map();
 
-function settle(id, result) {
-  const job = jobs.get(id);
-  if (!job) return;
-  jobs.delete(id);
-  clearTimeout(job.timer);
-  job.resolve(result);
-}
+  function settle(id, result) {
+    const job = jobs.get(id);
+    if (!job) return;
+    jobs.delete(id);
+    clearTimeout(job.timer);
+    job.resolve(result);
+  }
 
-function stopWorker() {
-  worker?.terminate();
-  worker = null;
-  [...jobs.keys()].forEach((id) => settle(id, UNMEASURED));
-}
+  function stopWorker() {
+    worker?.terminate();
+    worker = null;
+    [...jobs.keys()].forEach((id) => settle(id, unmeasured));
+  }
 
-function startWorker() {
-  const started = new Worker(new URL('./loudness-worker.js', import.meta.url), { type: 'module' });
-  started.onmessage = ({ data: { id, lufs, peak } }) => settle(id, { lufs, peak });
-  started.onerror = () => {
-    if (worker === started) stopWorker();
-  };
-  return started;
-}
+  function startWorker() {
+    const started = new Worker(new URL(script, import.meta.url), { type: 'module' });
+    started.onmessage = ({ data }) => settle(data.id, read(data));
+    started.onerror = () => {
+      if (worker === started) stopWorker();
+    };
+    return started;
+  }
 
-export function measureBuffer(buffer) {
-  return new Promise((resolve) => {
+  return (buffer) => new Promise((resolve) => {
     const id = nextJob++;
-    jobs.set(id, { resolve, timer: setTimeout(stopWorker, MEASURE_TIMEOUT_MS) });
+    jobs.set(id, { resolve, timer: setTimeout(stopWorker, ANALYSIS_TIMEOUT_MS) });
     try {
       worker ??= startWorker();
       const channels = Array.from({ length: Math.min(2, buffer.numberOfChannels) }, (_, index) => new Float32Array(buffer.getChannelData(index)));
       worker.postMessage({ id, channels, sampleRate: buffer.sampleRate }, channels.map((channel) => channel.buffer));
     } catch {
-      settle(id, UNMEASURED);
+      settle(id, unmeasured);
     }
   });
 }
 
+export const measureBuffer = workerRunner('./loudness-worker.js', {
+  unmeasured: { lufs: null, peak: 0 },
+  read: ({ lufs, peak }) => ({ lufs, peak }),
+});
+
+export const profileBuffer = workerRunner('./sound-worker.js', {
+  unmeasured: null,
+  read: ({ profile }) => profile,
+});
+
+async function decodeFile(file) {
+  const context = new OfflineAudioContext(1, 1, DECODE_RATE);
+  return context.decodeAudioData(await file.arrayBuffer());
+}
+
 export async function measureFile(file) {
-  const context = new OfflineAudioContext(1, 1, MEASURE_RATE);
-  return measureBuffer(await context.decodeAudioData(await file.arrayBuffer()));
+  return measureBuffer(await decodeFile(file));
+}
+
+export async function profileFile(file) {
+  return profileBuffer(await decodeFile(file));
 }

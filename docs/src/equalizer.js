@@ -9,6 +9,10 @@ export const PRESETS = {
   Bass: [8, 7, 5, 2, 0, 0, 0, 0, 0, 0],
   Treble: [0, 0, 0, 0, 0, 1, 3, 5, 7, 8],
   Vocal: [-3, -2, 0, 2, 4, 5, 4, 2, 0, -1],
+  Classical: [5, 4, 3, 2, -2, -2, 0, 2, 3, 4],
+  Jazz: [4, 3, 1, 2, -2, -2, 0, 1, 3, 4],
+  'Hip-Hop': [5, 4, 2, 3, -1, -1, 1, -1, 2, 3],
+  Acoustic: [5, 5, 4, 1, 2, 2, 3, 4, 3, 2],
 };
 
 export function clampGain(gain) {

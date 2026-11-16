@@ -3,6 +3,7 @@ import { BAND_FREQUENCIES, dbToLinear, headroomDb } from './equalizer.js';
 const BAND_Q = 1.2;
 const RESUME_LIMIT_MS = 3000;
 const LEVEL_RAMP_SECONDS = 0.6;
+const EQ_RAMP_SECONDS = 0.6;
 
 export class AudioEngine {
   #context = null;
@@ -41,9 +42,9 @@ export class AudioEngine {
     return this.#context?.sampleRate ?? 44100;
   }
 
-  setEq(eq) {
+  setEq(eq, { smooth = false } = {}) {
     this.#eq = eq;
-    this.#applyEq();
+    this.#applyEq(smooth);
   }
 
   setLevel(db, { smooth = false } = {}) {
@@ -87,13 +88,17 @@ export class AudioEngine {
     this.#applyVolume();
   }
 
-  #applyEq() {
+  #applyEq(smooth = false) {
     if (!this.#context) return;
     const { enabled, preamp, gains } = this.#eq;
-    this.#preamp.gain.value = enabled ? dbToLinear(preamp + headroomDb(gains)) : 1;
-    this.#filters.forEach((filter, index) => {
-      filter.gain.value = enabled ? gains[index] : 0;
-    });
+    const now = this.#context.currentTime;
+    const set = (param, value) => {
+      param.cancelScheduledValues(now);
+      if (smooth) param.setTargetAtTime(value, now, EQ_RAMP_SECONDS / 3);
+      else param.setValueAtTime(value, now);
+    };
+    set(this.#preamp.gain, enabled ? dbToLinear(preamp + headroomDb(gains)) : 1);
+    this.#filters.forEach((filter, index) => set(filter.gain, enabled ? gains[index] : 0));
   }
 
   #applyVolume() {

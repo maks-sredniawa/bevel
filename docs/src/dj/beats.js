@@ -100,7 +100,7 @@ function tempoWeight(bpm) {
   return Math.exp(-0.5 * (Math.log2(bpm / PREFERRED_BPM) / TEMPO_SPREAD_OCTAVES) ** 2);
 }
 
-function correlate(envelope, lag) {
+export function correlate(envelope, lag) {
   let sum = 0;
   for (let i = lag; i < envelope.length; i++) sum += envelope[i] * envelope[i - lag];
   return sum / (envelope.length - lag);

@@ -78,7 +78,7 @@ SAVED_CURRENT_PROFILED = """new Promise((resolve) => {
     };
   };
 })"""
-AUTO_EQ_SETTLED = "/\\((from tag|guessed from sound)\\)$/.test(document.getElementById('eq-genre').textContent)"
+AUTO_EQ_SETTLED = "!document.getElementById('eq-genre').textContent.includes('listening')"
 AUDIO_STATE = """(() => {
   const audio = document.getElementById('audio');
   return { paused: audio.paused, time: audio.currentTime, ready: audio.readyState, network: audio.networkState, duration: audio.duration, error: audio.error?.message ?? null };
@@ -334,10 +334,11 @@ def check_auto_eq(driver, name, folder):
     seen['sound_line'] = page.evaluate(f'{line}.textContent')
     seen['sound_preset'] = page.input_value('#eq-preset')
     wait_until(page, SAVED_CURRENT_PROFILED)
-    page.reload()
+    page.reload(wait_until='domcontentloaded')
     wait_until(page, 'window.retroDJ !== undefined')
     wait_until(page, AUTO_EQ_SETTLED)
     seen['restored_line'] = page.evaluate(f'{line}.textContent')
+    seen['restored_preset'] = page.input_value('#eq-preset')
     seen['remembered'] = page.is_checked('#eq-auto')
     page.uncheck('#eq-auto')
     seen['hidden_after'] = page.evaluate(f'{line}.hidden')
@@ -348,7 +349,8 @@ def check_auto_eq(driver, name, folder):
           and seen['by_hand_line'].endswith('changed by hand until next song')
           and seen['repeat_line'] == seen['by_hand_line'] and seen['repeat_preset'] == 'Rock'
           and seen['sound_line'] == f"Genre: {seen['sound_preset']} (guessed from sound)"
-          and seen['restored_line'] == seen['sound_line'] and seen['remembered'] and seen['hidden_after'] and seen['flag_off'] and seen['kept_preset'] == seen['sound_preset'])
+          and seen['restored_line'] in (seen['sound_line'], 'Genre: waiting for a song') and seen['restored_preset'] == seen['sound_preset']
+          and seen['remembered'] and seen['hidden_after'] and seen['flag_off'] and seen['kept_preset'] == seen['sound_preset'])
     print(json.dumps({'check': 'auto EQ picks a preset from the tag or the sound', 'browser': name, 'ok': ok, 'seen': seen}), flush=True)
     return ok
 

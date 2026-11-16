@@ -314,7 +314,7 @@ def check_auto_eq(driver, name, folder):
           and seen['by_hand_line'].endswith('changed by hand until next song')
           and seen['repeat_line'] == seen['by_hand_line'] and seen['repeat_preset'] == 'Rock'
           and seen['sound_line'] == f"Genre: {seen['sound_preset']} (guessed from sound)"
-          and seen['dj_flag_off'] and seen['after_dj_preset'] == seen['sound_preset']
+          and seen['dj_flag_off'] and seen['script_dj_flag_off'] and seen['after_dj_preset'] == seen['sound_preset']
           and seen['restored_line'] in (seen['sound_line'], 'Genre: waiting for a song') and seen['restored_preset'] == seen['sound_preset']
           and seen['remembered'] and seen['hidden_after'] and seen['flag_off'] and seen['kept_preset'] == seen['sound_preset'])
     print(json.dumps({'check': 'auto EQ picks a preset from the tag or the sound', 'browser': name, 'ok': ok, 'seen': seen}), flush=True)
@@ -364,6 +364,11 @@ def auto_eq_seen(page, tag_song, sound_song):
     page.click('#dj-switch')
     wait_until(page, f"{line}.textContent.includes('(guessed from sound)')")
     seen['after_dj_preset'] = page.input_value('#eq-preset')
+    page.evaluate('window.retroDJ.enable(true)')
+    wait_until(page, f"{line}.textContent === 'Genre: off in DJ mode'")
+    seen['script_dj_flag_off'] = not page.evaluate("document.getElementById('flag-auto').classList.contains('on')")
+    page.evaluate('window.retroDJ.enable(false)')
+    wait_until(page, f"{line}.textContent.includes('(guessed from sound)')")
     wait_until(page, SAVED_CURRENT_PROFILED)
     page = reopen(page)
     wait_until(page, 'window.retroDJ !== undefined')

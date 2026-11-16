@@ -101,6 +101,7 @@ let probesRunning = 0;
 const levelQueue = [];
 let levelRunning = false;
 let profiling = Promise.resolve();
+let autoEqPausedForDj = false;
 let autoEq = { trackId: null, status: 'waiting', preset: null, genre: null, byHand: false };
 
 function setPressed(element, on) {
@@ -945,8 +946,21 @@ function setPreset(name, { smooth = false } = {}) {
   applyEq({ smooth });
 }
 
+function djActive() {
+  return settings.dj || Boolean(dj?.enabled);
+}
+
 function autoEqActive() {
-  return settings.eq.auto && !settings.dj;
+  return settings.eq.auto && !djActive();
+}
+
+function followDjForAutoEq() {
+  const paused = djActive();
+  if (paused === autoEqPausedForDj) return;
+  autoEqPausedForDj = paused;
+  retuneLoaded({ keepByHand: true });
+  renderAutoEq();
+  renderDeck();
 }
 
 function changeEqByHand() {
@@ -964,7 +978,7 @@ function renderAutoEq() {
     sound: `Genre: ${autoEq.genre} (guessed from sound)`,
     unknown: 'Genre: unknown, using Flat',
   };
-  const text = settings.dj ? 'Genre: off in DJ mode' : texts[autoEq.status] + (autoEq.byHand ? ' · changed by hand until next song' : '');
+  const text = djActive() ? 'Genre: off in DJ mode' : texts[autoEq.status] + (autoEq.byHand ? ' · changed by hand until next song' : '');
   if (line.textContent !== text) line.textContent = text;
 }
 
@@ -1245,9 +1259,7 @@ async function setDjMode(on) {
   settings.dj = on;
   saveSettings();
   applyDjMode();
-  retuneLoaded({ keepByHand: true });
-  renderAutoEq();
-  renderDeck();
+  followDjForAutoEq();
   await dj.enable(on);
   if (on) visualiser.run();
   else if (audio.paused) visualiser.stop();
@@ -1586,6 +1598,8 @@ async function startPlayer() {
     getPlaylists: () => playlists.map((record) => ({ name: record.name, tracks: record.list.tracks })),
   });
   window.retroDJ = dj;
+  autoEqPausedForDj = djActive();
+  dj.subscribe(followDjForAutoEq);
   djPanel = bindPanel({ dj, getActivePlaylist: () => active.name, setRowDecks });
   buildDjSwitch();
   applyDjMode();
